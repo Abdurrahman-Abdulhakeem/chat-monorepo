@@ -15,7 +15,7 @@ import {
   ensureConversation,
   User,
   Conversation,
-} from "./storage";
+} from "./storage.js";
 import { auth } from "./routes/auth"; 
 import uploadRouter from "./routes/upload";
 import mongoose from "mongoose";
