@@ -7,9 +7,9 @@
   "scripts": {
     "dev": "nodemon --watch src --exec tsx --env-file=../../.env src/server.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/server.js",
+    "start": "node src/server.js",
     "lint": "eslint .",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf src"
   },
   "dependencies": {
     "@socket.io/redis-adapter": "^8.3.0",
