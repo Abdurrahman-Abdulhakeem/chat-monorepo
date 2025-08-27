@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import { env } from "./config/environment";
+import { env } from "./config/environment.js";
 
 // Helper: force required env at runtime
 function reqEnv(name: keyof typeof env): string {

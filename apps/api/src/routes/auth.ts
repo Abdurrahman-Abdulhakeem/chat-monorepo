@@ -1,14 +1,14 @@
 import { Router } from "express";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
-import { User } from "../storage";
+import { User } from "../storage.js";
 import {
   comparePassword,
   hashPassword,
   signAccess,
   signRefresh,
   verifyRefresh,
-} from "../auth";
+} from "../auth.js";
 
 export const auth = Router();
 

@@ -16,12 +16,12 @@ import {
   User,
   Conversation,
 } from "./storage.js";
-import { auth } from "./routes/auth"; 
-import uploadRouter from "./routes/upload";
+import { auth } from "./routes/auth.js"; 
+import uploadRouter from "./routes/upload.js";
 import mongoose from "mongoose";
-import { seed } from "./seed";
-import { corsOptions } from "./config/cors";
-import { env } from "./config/environment";
+import { seed } from "./seed.js";
+import { corsOptions } from "./config/cors.js";
+import { env } from "./config/environment.js";
 
 const app = express();
 app.use(helmet({

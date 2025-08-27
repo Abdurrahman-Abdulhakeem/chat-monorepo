@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { Conversation, Message } from "./storage";
+import { Conversation, Message } from "./storage.js";
 import { randomUUID } from "crypto";
 
 export async function seed() {
