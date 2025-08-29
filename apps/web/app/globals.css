@@ -62,7 +62,7 @@
 
 /* Firefox */
 * {
-  scrollbar-width: thin; 
+  scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
 }
 
@@ -144,3 +144,14 @@
   }
 }
 
+@layer components {
+  .sticky-header {
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: color-mix(in oklab, var(--color-white) 10%, transparent);
+  }
+}

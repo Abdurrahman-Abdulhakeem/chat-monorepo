@@ -92,13 +92,13 @@ export function ChatInput({ send, activeConv, socket }: any) {
   const borderRadiusClass = height <= 60 ? "rounded-full" : "rounded-3xl";
 
   return (
-    <div className="p-3 border-t sticky supports-[backdrop-filter]:bg-neutral-950/80 bottom-0 z-10 bg-neutral-950/80 border-white/10 backdrop-blur flex gap-2">
+    <div className="p-3 border-t sticky sticky-header bottom-0 z-10 bg-neutral-950/80 border-white/10 backdrop-blur flex gap-2">
       <div
         className={`bg-white/5 pb-1 flex items-baseline-last w-full ${borderRadiusClass}`}
       >
         <div
           {...getRootProps()}
-          className="cursor-pointer hover:bg-white/5 transition fixed left-5 w-10 h-10 justify-center px-3 py-2 rounded-full flex items-center"
+          className="cursor-pointer hover:bg-white/5 transition fixed left-5 w-10 h-10 justify-center px-3 py-2 pb-1 rounded-full flex items-center"
         >
           <input {...getInputProps()} />
           <ImagePlus />

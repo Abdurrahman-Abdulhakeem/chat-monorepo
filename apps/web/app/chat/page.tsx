@@ -94,7 +94,7 @@ export default function ChatPage() {
           showChat ? "flex" : "hidden"
         } md:flex`}
       >
-        <div className="flex items-center gap-3 p-4 border-b border-white/10 sticky supports-[backdrop-filter]:bg-neutral-950/80 z-10 top-0 bg-neutral-950/80 backdrop-blur">
+        <div className="sticky-header flex items-center gap-3 p-4 border-b border-white/10 bg-neutral-950/80">
           <button
             onClick={() => setShowChat(false)}
             className="md:hidden p-2 -ml-2"
