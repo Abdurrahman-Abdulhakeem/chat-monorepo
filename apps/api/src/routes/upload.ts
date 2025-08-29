@@ -3,7 +3,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { v4 as uuid } from "uuid";
-import { env } from "config/environment";
+import { env } from "config/environment.js";
 
 const router = express.Router();
 
