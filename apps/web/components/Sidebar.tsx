@@ -55,7 +55,7 @@ const Sidebar = ({
         showChat ? "hidden" : "flex"
       } md:flex`}
     >
-      <div className="flex sticky top-4 backdrop-blur items-center justify-between">
+      <div className="flex sticky top-4 backdrop-blur items-center justify-between supports-[backdrop-filter]:bg-white/60">
         <div className="font-semibold flex-1 text-xl tracking-tighter">
           PeerMe
         </div>
