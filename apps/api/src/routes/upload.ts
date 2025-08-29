@@ -3,6 +3,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { v4 as uuid } from "uuid";
+import { env } from "config/environment";
 
 const router = express.Router();
 
@@ -22,7 +23,7 @@ router.post("/", upload.single("file"), async (req, res) => {
     fs.renameSync(req.file.path, newPath);
 
     // serve from static /uploads
-    const fileUrl = `${process.env.BASE_URL}/uploads/${newName}`;
+    const fileUrl = `${env.BASE_URL}/uploads/${newName}`;
 
     res.json({ url: fileUrl });
   } catch (err) {

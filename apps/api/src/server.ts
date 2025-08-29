@@ -28,7 +28,7 @@ app.use(helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"], 
-        imgSrc: ["'self'", "data:", "http://localhost:4000"], // allow images from backend
+        imgSrc: ["'self'", "data:", env.BASE_URL], // allow images from backend
       },
     },
     crossOriginResourcePolicy: { policy: "cross-origin" },

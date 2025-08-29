@@ -12,6 +12,7 @@ const envSchema = z.object({
   JWT_ACCESS_SECRET: z.string(),
   JWT_REFRESH_SECRET: z.string(),
   CORS_ORIGIN: z.string(),
+  BASE_URL: z.string().default("http://localhost:4000"),
 });
 
 export const env = envSchema.parse(process.env);
