@@ -144,14 +144,23 @@
   }
 }
 
-@layer components {
-  .sticky-header {
-    position: -webkit-sticky;
-    position: sticky;
-    top: 0;
-    z-index: 50;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    background: color-mix(in oklab, var(--color-white) 10%, transparent);
-  }
+/* Force Safari to behave */
+
+.sticky-header {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
 }
+
+.sticky-input {
+  position: -webkit-sticky;
+  position: sticky;
+  bottom: 0;
+  z-index: 50;
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
+}
+
