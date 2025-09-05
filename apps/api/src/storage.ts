@@ -1,4 +1,4 @@
-import mongoose, { Schema, model, Document } from "mongoose";
+import mongoose, { Schema, model, Document, Types } from "mongoose";
 
 export async function connectMongo(url: string, dbName: string) {
   await mongoose.connect(url, { dbName });
@@ -66,7 +66,13 @@ export interface IUser extends Document {
   updateActivity(deviceId: string): void;
 }
 
-const UserSchema = new Schema<IUser>(
+// Add Document with ObjectId and timestamps
+type IUserDocument = IUser & Document<Types.ObjectId> & {
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+const UserSchema = new Schema<IUserDocument>(
   {
     email: {
       type: String,
@@ -171,7 +177,7 @@ UserSchema.methods.updateActivity = function (deviceId: string) {
   }
 };
 
-export const User = model<IUser>("User", UserSchema);
+export const User = model<IUserDocument>("User", UserSchema);
 // Conversation
 const ConversationSchema = new Schema(
   {

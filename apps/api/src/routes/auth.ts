@@ -6,11 +6,6 @@ import { authenticateToken } from "../middleware/auth.js";
 import { User } from "storage.js";
 import { signAccess, signRefresh, verifyRefresh } from "auth.js";
 
-// extend Request type for auth middleware
-interface AuthRequest extends Request {
-  user?: { userId: string; email: string };
-}
-
 const router = Router();
 
 // Helper function to extract device info
@@ -233,7 +228,7 @@ router.get("/profile", authenticateToken, async (req: any, res: Response) => {
 });
 
 // Update user profile
-router.put("/profile", authenticateToken, async (req: AuthRequest, res: Response) => {
+router.put("/profile", authenticateToken, async (req: any, res: Response) => {
   try {
     const { name, phone, bio, location, avatarUrl } = req.body;
 
@@ -265,7 +260,7 @@ router.put("/profile", authenticateToken, async (req: AuthRequest, res: Response
 });
 
 // Remove device
-router.delete("/devices/:deviceId", authenticateToken, async (req: AuthRequest, res: Response) => {
+router.delete("/devices/:deviceId", authenticateToken, async (req: any, res: Response) => {
   try {
     const { deviceId } = req.params;
 
