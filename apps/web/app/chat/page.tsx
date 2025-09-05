@@ -89,11 +89,11 @@ export default function ChatPage() {
 
       {/* Chat */}
       <main
-        className={`relative overflow-auto flex flex-col ${
+        className={`relative overflow-hidden flex flex-col h-full ${
           showChat ? "flex" : "hidden"
         } md:flex`}
       >
-        <div className="sticky z-[60] top-0 flex items-center gap-3 p-4 border-b border-white/10 bg-neutral-950/80">
+        <div className="sticky z-50 top-0 flex items-center gap-3 p-4 border-b border-white/10 bg-neutral-950/80">
           <button
             onClick={() => setShowChat(false)}
             className="md:hidden p-2 -ml-2"
