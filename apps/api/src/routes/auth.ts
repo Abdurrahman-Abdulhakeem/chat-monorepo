@@ -3,8 +3,8 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
 import { authenticateToken } from "../middleware/auth.js";
-import { User } from "storage.js";
-import { signAccess, signRefresh, verifyRefresh } from "auth.js";
+import { User } from "../storage.js";
+import { signAccess, signRefresh, verifyRefresh } from "../auth.js";
 
 const router = Router();
 
