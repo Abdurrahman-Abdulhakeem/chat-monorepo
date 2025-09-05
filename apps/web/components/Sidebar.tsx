@@ -25,6 +25,7 @@ interface SidebarProps {
   setActiveConv: (c: Conv) => void;
   setShowChat: (c: boolean) => void;
   refetchMessages: () => void;
+  setActiveView: (s: string) => void;
 }
 
 const Sidebar = ({
@@ -33,12 +34,14 @@ const Sidebar = ({
   setShowChat,
   refetchMessages,
   showChat,
+  setActiveView,
 }: SidebarProps) => {
   const { data: conversations } = useConversations();
   const openConversation = async (conv: Conv) => {
     setActiveConv(conv);
     setShowChat(true);
     refetchMessages();
+    setActiveView("chat");
   };
   useEffect(() => {
     if (!conversations?.length) return;
@@ -75,9 +78,9 @@ const Sidebar = ({
             <Settings className="w-6 h-6 hover:cursor-pointer opacity-97" />
           </DropdownMenuTrigger>
           <DropdownMenuContent className="bg-white/5 backdrop-blur  border border-white/10 text-white">
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={()=> setActiveView("profile")}>
               <User className="h-4 w-4" />
-              Profile
+             Profile 
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-white/10" />
             <DropdownMenuItem variant="destructive">
