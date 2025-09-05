@@ -1,23 +1,177 @@
-import mongoose, { Schema, model } from "mongoose";
+import mongoose, { Schema, model, Document } from "mongoose";
 
 export async function connectMongo(url: string, dbName: string) {
   await mongoose.connect(url, { dbName });
 }
 
 // User
-const UserSchema = new Schema(
-  {
-    email: { type: String, unique: true, index: true, required: true },
-    name: { type: String },
-    avatarUrl: { type: String },
-    passwordHash: { type: String, required: true },
-    devices: [{ deviceId: String, lastSeenAt: Date, userAgent: String }],
+
+
+const DeviceSchema = new Schema({
+  deviceId: { 
+    type: String, 
+    required: true 
   },
-  { timestamps: true }
+  userAgent: { 
+    type: String, 
+    required: true 
+  },
+  ip: { 
+    type: String 
+  },
+  deviceType: { 
+    type: String, 
+    enum: ['mobile', 'tablet', 'desktop'],
+    default: 'desktop'
+  },
+  browser: { 
+    type: String 
+  },
+  os: { 
+    type: String 
+  },
+  lastSeenAt: { 
+    type: Date, 
+    default: Date.now 
+  }
+}, { _id: false });
+
+
+// User interface for TS
+export interface IUser extends Document {
+  id?: string; // for toJSON transform
+  email: string;
+  name: string;
+  avatarUrl?: string | null;
+  phone?: string | null;
+  bio?: string | null;
+  location?: string | null;
+  passwordHash: string;
+  devices: typeof DeviceSchema[];
+  dateOfBirth?: Date | null;
+  gender?: "male" | "female" | "other" | "prefer_not_to_say" | null;
+  timezone?: string | null;
+  language?: string;
+  settings?: any;
+  status: "online" | "offline" | "away" | "busy";
+  lastActiveAt: Date;
+  isEmailVerified: boolean;
+  isPhoneVerified: boolean;
+  isTwoFactorEnabled: boolean;
+  failedLoginAttempts: number;
+  accountLockedUntil?: Date | null;
+
+  // methods
+  cleanupDevices(): void;
+  updateActivity(deviceId: string): void;
+}
+
+const UserSchema = new Schema<IUser>(
+  {
+    email: {
+      type: String,
+      unique: true,
+      index: true,
+      required: true,
+      lowercase: true,
+      trim: true,
+    },
+    name: { type: String, required: true, trim: true },
+    avatarUrl: { type: String, default: null },
+    phone: { type: String, default: null, trim: true },
+    bio: { type: String, maxlength: 500, default: null, trim: true },
+    location: { type: String, default: null, trim: true },
+    passwordHash: { type: String, required: true },
+    devices: [DeviceSchema],
+    dateOfBirth: { type: Date, default: null },
+    gender: {
+      type: String,
+      enum: ["male", "female", "other", "prefer_not_to_say"],
+      default: null,
+    },
+    timezone: { type: String, default: null },
+    language: { type: String, default: "en" },
+    settings: {
+      notifications: {
+        email: { type: Boolean, default: true },
+        push: { type: Boolean, default: true },
+        sms: { type: Boolean, default: false },
+      },
+      privacy: {
+        profileVisibility: {
+          type: String,
+          enum: ["public", "friends", "private"],
+          default: "public",
+        },
+        showEmail: { type: Boolean, default: false },
+        showPhone: { type: Boolean, default: false },
+        showLocation: { type: Boolean, default: true },
+      },
+      theme: {
+        mode: {
+          type: String,
+          enum: ["light", "dark", "auto"],
+          default: "dark",
+        },
+      },
+    },
+    status: {
+      type: String,
+      enum: ["online", "offline", "away", "busy"],
+      default: "offline",
+    },
+    lastActiveAt: { type: Date, default: Date.now },
+    isEmailVerified: { type: Boolean, default: false },
+    isPhoneVerified: { type: Boolean, default: false },
+    isTwoFactorEnabled: { type: Boolean, default: false },
+    failedLoginAttempts: { type: Number, default: 0 },
+    accountLockedUntil: { type: Date, default: null },
+  },
+  {
+    timestamps: true,
+    toJSON: {
+      transform: function (doc, ret) {
+        // TS fix: cast ret to any so we can safely delete
+        const obj: any = ret;
+        obj.id = obj._id;
+        delete obj._id;
+        delete obj.__v;
+        delete obj.passwordHash;
+        return obj;
+      },
+    },
+  }
 );
 
-export const User = model("User", UserSchema);
+// Indexes
+UserSchema.index({ email: 1 });
+UserSchema.index({ "devices.deviceId": 1 });
+UserSchema.index({ lastActiveAt: -1 });
 
+// Virtual
+UserSchema.virtual("displayName").get(function (this: IUser) {
+  return this.name;
+});
+
+// Methods
+UserSchema.methods.cleanupDevices = function () {
+  if (this.devices.length > 10) {
+    this.devices.sort((a: any, b: any) => b.lastSeenAt - a.lastSeenAt);
+    this.devices = this.devices.slice(0, 10);
+  }
+};
+
+UserSchema.methods.updateActivity = function (deviceId: string) {
+  this.lastActiveAt = new Date();
+  this.status = "online";
+
+  const device = this.devices.find((d: any) => d.deviceId === deviceId);
+  if (device) {
+    device.lastSeenAt = new Date();
+  }
+};
+
+export const User = model<IUser>("User", UserSchema);
 // Conversation
 const ConversationSchema = new Schema(
   {
@@ -87,7 +241,7 @@ export async function ensureConversation(
   userId: string,
   peer: { id?: string; email?: string; name?: string }
 ) {
-  let peerUser = null;
+  let peerUser: any = null;
 
   if (peer.id) {
     peerUser = await User.findById(peer.id);

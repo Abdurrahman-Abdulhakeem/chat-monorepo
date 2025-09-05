@@ -22,8 +22,10 @@ import { Conv } from "@/lib/types";
 interface SidebarProps {
   activeConv: Conv | null;
   showChat: boolean;
+  showProfile: boolean;
   setActiveConv: (c: Conv) => void;
   setShowChat: (c: boolean) => void;
+  setShowProfile: (c: boolean) => void;
   refetchMessages: () => void;
   setActiveView: (s: string) => void;
 }
@@ -35,6 +37,8 @@ const Sidebar = ({
   refetchMessages,
   showChat,
   setActiveView,
+  showProfile,
+  setShowProfile,
 }: SidebarProps) => {
   const { data: conversations } = useConversations();
   const openConversation = async (conv: Conv) => {
@@ -55,7 +59,7 @@ const Sidebar = ({
   return (
     <aside
       className={`flex flex-col border-r border-white/10 p-4 gap-3 ${
-        showChat ? "hidden" : "flex"
+        showChat || showProfile ? "hidden" : "flex"
       } md:flex`}
     >
       <div className="flex sticky top-4 backdrop-blur items-center justify-between">
@@ -77,10 +81,18 @@ const Sidebar = ({
           <DropdownMenuTrigger asChild>
             <Settings className="w-6 h-6 hover:cursor-pointer opacity-97" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-white/5 backdrop-blur  border border-white/10 text-white">
-            <DropdownMenuItem onClick={()=> setActiveView("profile")}>
+          <DropdownMenuContent className="bg-white/5 backdrop-blur border border-white/10 text-white">
+            <DropdownMenuItem
+              onClick={() => {
+                setTimeout(() => {
+                  setShowProfile(true);
+                  setActiveView("profile");
+                  setShowChat(false);
+                }, 50);
+              }}
+            >
               <User className="h-4 w-4" />
-             Profile 
+              Profile
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-white/10" />
             <DropdownMenuItem variant="destructive">

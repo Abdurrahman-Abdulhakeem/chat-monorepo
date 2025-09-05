@@ -13,13 +13,16 @@ import { Socket } from "socket.io-client";
 import { ChatInput } from "@/components/ChatInput";
 import Sidebar from "@/components/Sidebar";
 import ProfilePage from "@/components/pages/ProfilePage";
+import { useAuth } from "@/contexts/AuthProvider";
 
 export default function ChatPage() {
   const [activeConv, setActiveConv] = useState<Conv | null>(null);
   const [typing, setTyping] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [ showProfile, setShowProfile ] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [activeView, setActiveView] = useState("chat");
+  const { refetchUser } = useAuth();
 
   const meId = useMemo(
     () =>
@@ -33,6 +36,7 @@ export default function ChatPage() {
   const sendMessage = useSendMessage(socket);
 
   useEffect(() => {
+    refetchUser()
     const token = localStorage.getItem("access") || "";
     const s = initSocket(token);
     setSocket(s);
@@ -78,9 +82,9 @@ export default function ChatPage() {
     socket?.emit("presence:ping", { convId: activeConv._id, typing: false });
   };
 
-  const handleBackToChat = () => {
-    setShowChat(true);
-    setActiveView("chat");
+  const handleCloseAll = () => {
+    setShowChat(false)
+    setShowProfile(false)
   };
 
   return (
@@ -102,16 +106,16 @@ export default function ChatPage() {
           activeConv={activeConv}
           setActiveConv={setActiveConv}
           setShowChat={setShowChat}
+          setShowProfile={setShowProfile}
           refetchMessages={refetchMessages}
           showChat={showChat}
+          showProfile={showProfile}
           setActiveView={setActiveView}
         />
 
         {/* Chat */}
         <main
-          className={`relative flex flex-col h-[100dvh] min-h-0 ${
-            showChat ? "flex" : "hidden"
-          } md:flex`}
+          className={`relative h-[100dvh] min-h-0`}
         >
           <AnimatePresence mode="wait">
             {activeView === "profile" ? (
@@ -121,9 +125,9 @@ export default function ChatPage() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
-                className="h-full"
+                className={`h-full ${ showProfile ? "flex" : "hidden"} md:flex flex-col`}
               >
-                <ProfilePage onBack={handleBackToChat} />
+                <ProfilePage onBack={handleCloseAll} />
               </motion.div>
             ) : (
               <motion.div
@@ -132,13 +136,13 @@ export default function ChatPage() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.3 }}
-                className="h-full flex flex-col"
+                className={`h-full ${ showChat ? "flex" : "hidden"} md:flex flex-col`}
               >
                 {/* Sticky header */}
                 <div className="sticky top-0 z-20 border-b border-white/10 bg-neutral-950/80 supports-[backdrop-filter:blur(2px)]:backdrop-blur backdrop-fallback transform-gpu">
                   <div className="flex items-center gap-3 p-4">
                     <button
-                      onClick={() => setShowChat(false)}
+                      onClick={handleCloseAll}
                       className="md:hidden p-2 -ml-2"
                     >
                       <ArrowLeft className="w-5 h-5" />

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
@@ -13,12 +12,14 @@ import {
 import api from "@/lib/api";
 import { setSession, clearSession, me } from "@/lib/auth";
 
-type User = {
+export type User = {
   id: string;
-  _id?: string;
   email: string;
   name?: string;
   avatarUrl?: string;
+  phone?: string;
+  location?: string;
+  bio?: string;
 };
 
 type AuthContextType = {
@@ -65,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const handleAuthResponse = (data: any) => {
     // FIX: Handle both response structures properly
-    const tokens = data.tokens || { access: data.access, refresh: data.refresh };
+    const tokens = data.token
     const userData = data.user || data;
     
     setSession({
@@ -138,10 +139,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refetchUser = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { data } = await api.get("/auth/me");
-      setUser(data);
+      const { data } = await api.get("/auth/profile");
+      setUser(data.user);
     } catch (err) {
       // Only logout if we had a user before
+      console.log(err)
       if (user) {
         logout();
       }

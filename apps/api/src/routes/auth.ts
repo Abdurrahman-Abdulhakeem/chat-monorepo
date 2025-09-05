@@ -1,130 +1,195 @@
-import { Router } from "express";
-import { z } from "zod";
-import jwt from "jsonwebtoken";
-import { User } from "../storage.js";
-import {
-  comparePassword,
-  hashPassword,
-  signAccess,
-  signRefresh,
-  verifyRefresh,
-} from "../auth.js";
+import { Router, Request, Response } from "express";
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
-export const auth = Router();
+import { authenticateToken } from "../middleware/auth.js";
+import { User } from "storage.js";
+import { signAccess, signRefresh, verifyRefresh } from "auth.js";
 
-export const RegisterSchema = z.object({
-email: z.string().email("Enter a valid email"),
-name: z.string().min(2, "Name must be at least 2 characters"),
-password: z.string().min(6, "Password must be at least 6 characters")
-});
+// extend Request type for auth middleware
+interface AuthRequest extends Request {
+  user?: { userId: string; email: string };
+}
 
+const router = Router();
 
-export const LoginSchema = z.object({
-  email: z.string().email("Enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
+// Helper function to extract device info
+const extractDeviceInfo = (req: Request) => {
+  const userAgent = req.headers["user-agent"] || "";
+  const ip =
+    (req.ip as string) ||
+    (req.connection as any)?.remoteAddress ||
+    (req.headers["x-forwarded-for"] as string);
 
-// Auth middleware for protected routes
-export const authMiddleware = async (req: any, res: any, next: any) => {
-  const token = req.headers.authorization?.replace("Bearer ", "");
-  if (!token) return res.status(401).json({ error: "Missing token" });
-
-  try {
-    const payload = jwt.verify(token, process.env.JWT_ACCESS_SECRET!) as any;
-    req.userId = payload.sub;
-    next();
-  } catch {
-    res.status(401).json({ error: "Invalid token" });
-  }
+  return {
+    userAgent,
+    ip,
+    deviceType: getDeviceType(userAgent),
+    browser: getBrowser(userAgent),
+    os: getOS(userAgent),
+    lastSeenAt: new Date(),
+  };
 };
 
-/** Register */
-auth.post("/register", async (req, res) => {
+const getDeviceType = (userAgent: string) => {
+  if (/mobile/i.test(userAgent)) return "mobile";
+  if (/tablet/i.test(userAgent)) return "tablet";
+  return "desktop";
+};
+
+const getBrowser = (userAgent: string) => {
+  if (userAgent.includes("Chrome")) return "Chrome";
+  if (userAgent.includes("Firefox")) return "Firefox";
+  if (userAgent.includes("Safari")) return "Safari";
+  if (userAgent.includes("Edge")) return "Edge";
+  return "Unknown";
+};
+
+const getOS = (userAgent: string) => {
+  if (userAgent.includes("Windows")) return "Windows";
+  if (userAgent.includes("Mac")) return "macOS";
+  if (userAgent.includes("Linux")) return "Linux";
+  if (userAgent.includes("Android")) return "Android";
+  if (userAgent.includes("iOS")) return "iOS";
+  return "Unknown";
+};
+
+// Generate unique device ID
+const generateDeviceId = (userAgent: string, ip: string) => {
+  return crypto
+    .createHash("sha256")
+    .update(`${userAgent}-${ip}`)
+    .digest("hex")
+    .substring(0, 16);
+};
+
+// Register endpoint with device tracking
+router.post("/register", async (req: Request, res: Response) => {
   try {
-    const body = RegisterSchema.parse(req.body);
+    const { name, email, password } = req.body;
 
-    const exists = await User.findOne({ email: body.email });
-    if (exists) return res.status(409).json({ error: "Email already in use" });
+    if (!name || !email || !password) {
+      return res
+        .status(400)
+        .json({ error: "Name, email and password are required" });
+    }
 
-    const passwordHash = await hashPassword(body.password);
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: "User already exists" });
+    }
 
-    const user = await User.create({
-      email: body.email,
-      passwordHash,          
-      name: body.name,
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    const deviceInfo = extractDeviceInfo(req);
+    const deviceId = generateDeviceId(
+      deviceInfo.userAgent,
+      deviceInfo.ip || ""
+    );
+
+    const user = new User({
+      name,
+      email,
+      passwordHash,
+      devices: [{ deviceId, ...deviceInfo }],
     });
 
-    const id = user._id.toString();
+    await user.save();
+
+    const id: string = user._id.toString();
     const accessToken = signAccess(id);
     const refreshToken = signRefresh(id);
 
-    return res.status(201).json({
-      user: { 
-        id, 
-        _id: id,
-        email: user.email, 
-        name: user.name 
-      },
-      tokens: { 
+    res.status(201).json({
+      message: "User registered successfully",
+      token: { 
         access: accessToken, 
         refresh: refreshToken 
       },
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+        createdAt: user.createdAt,
+      },
     });
-  } catch (err) {
-    if (err instanceof z.ZodError) {
-      return res.status(400).json({ error: err.issues });
-    }
-    console.error(err);
-    return res.status(500).json({ error: "Internal server error" });
+  } catch (error) {
+    console.error("Registration error:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
-/** Login */
-auth.post("/login", async (req, res) => {
+// Login endpoint with device tracking
+router.post("/login", async (req: Request, res: Response) => {
   try {
-    const body = LoginSchema.parse(req.body);
+    const { email, password } = req.body;
 
-    const user = await User.findOne({ email: body.email });
-    if (!user || !user.passwordHash) {
-      return res.status(401).json({ error: "Invalid email or password" });
+    const user: any = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    const valid = await comparePassword(body.password, user.passwordHash);
-    if (!valid) {
-      return res.status(401).json({ error: "Invalid email or password" });
+    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+    if (!isValidPassword) {
+      return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    const id = user._id.toString();
+    const deviceInfo = extractDeviceInfo(req);
+    const deviceId = generateDeviceId(
+      deviceInfo.userAgent,
+      deviceInfo.ip || ""
+    );
+
+    const existingDeviceIndex = user.devices.findIndex(
+      (d: any) => d.deviceId === deviceId
+    );
+    if (existingDeviceIndex >= 0) {
+      user.devices[existingDeviceIndex] = { deviceId, ...deviceInfo };
+    } else {
+      user.devices.push({ deviceId, ...deviceInfo });
+    }
+
+    await user.save();
+
+    const id: any = user._id.toString();
     const accessToken = signAccess(id);
     const refreshToken = signRefresh(id);
 
-    return res.status(200).json({
-      user: { 
-        id, 
-        _id: id,
-        email: user.email, 
-        name: user.name 
-      },
-      tokens: { 
+    res.json({
+      message: "Login successful",
+      token: { 
         access: accessToken, 
         refresh: refreshToken 
       },
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+        phone: user.phone,
+        bio: user.bio,
+        location: user.location,
+        createdAt: user.createdAt,
+        devices: user.devices.map((d: any) => ({
+          deviceId: d.deviceId,
+          deviceType: d.deviceType,
+          browser: d.browser,
+          os: d.os,
+          lastSeenAt: d.lastSeenAt,
+        })),
+      },
     });
-  } catch (err) {
-    if (err instanceof z.ZodError) {
-      return res.status(400).json({ error: err.issues });
-    }
-    console.error(err);
-    return res.status(500).json({ error: "Internal server error" });
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
-/** Refresh */
-const RefreshBody = z.object({ refreshToken: z.string().min(1) });
-
-auth.post("/refresh", async (req, res) => { 
+// Refresh
+router.post("/refresh", async (req: any, res: any) => { 
   try {
-    const { refreshToken } = RefreshBody.parse(req.body);
+    const { refreshToken } = req.body;
     const payload = verifyRefresh(refreshToken);
     const accessToken = signAccess(payload.sub);
     return res.json({ access: accessToken });
@@ -133,20 +198,90 @@ auth.post("/refresh", async (req, res) => {
   }
 });
 
-/** Get current user */
-auth.get("/me", authMiddleware, async (req: any, res) => {
+// Get user profile
+router.get("/profile", authenticateToken, async (req: any, res: Response) => {
   try {
-    const user = await User.findById(req.userId).select('-passwordHash');
-    if (!user) return res.status(404).json({ error: "User not found" });
-    
-    return res.json({
-      id: user._id.toString(),
-      _id: user._id.toString(),
-      email: user.email,
-      name: user.name,
-      avatarUrl: user.avatarUrl
+    const user = await User.findById(req.userId).select("-passwordHash");
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+        phone: user.phone,
+        bio: user.bio,
+        location: user.location,
+        createdAt: user.createdAt,
+        devices: user.devices.map((d: any) => ({
+          deviceId: d.deviceId,
+          deviceType: d.deviceType,
+          browser: d.browser,
+          os: d.os,
+          ip: d.ip,
+          lastSeenAt: d.lastSeenAt,
+        })),
+      },
     });
-  } catch (err) {
-    return res.status(500).json({ error: "Internal server error" });
+  } catch (error) {
+    console.error("Profile fetch error:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// Update user profile
+router.put("/profile", authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const { name, phone, bio, location, avatarUrl } = req.body;
+
+    const updateData: any = {};
+    if (name) updateData.name = name;
+    if (phone) updateData.phone = phone;
+    if (bio) updateData.bio = bio;
+    if (location) updateData.location = location;
+    if (avatarUrl) updateData.avatarUrl = avatarUrl;
+
+
+    const user = await User.findByIdAndUpdate(req.userId, updateData, {
+      new: true,
+      runValidators: true,
+    }).select("-passwordHash");
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json({
+      message: "Profile updated successfully",
+      user,
+    });
+  } catch (error) {
+    console.error("Profile update error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Remove device
+router.delete("/devices/:deviceId", authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const { deviceId } = req.params;
+
+    const user: any = await User.findById(req.user?.userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    user.devices = user.devices.filter((d: any) => d.deviceId !== deviceId);
+    await user.save();
+
+    res.json({ message: "Device removed successfully" });
+  } catch (error) {
+    console.error("Device removal error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}); 
+
+export default router;

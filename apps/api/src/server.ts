@@ -16,7 +16,7 @@ import {
   User,
   Conversation,
 } from "./storage.js";
-import { auth } from "./routes/auth.js"; 
+import auth from "./routes/auth.js"; 
 import uploadRouter from "./routes/upload.js";
 import mongoose from "mongoose";
 import { seed } from "./seed.js";

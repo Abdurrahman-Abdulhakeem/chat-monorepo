@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-"use client";
-
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -18,22 +16,56 @@ import {
   Bell,
   Palette,
   Globe,
+  Monitor,
+  Smartphone,
+  Tablet,
+  MapPinIcon,
+  Loader2,
+  Trash2
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthProvider";
+import { UpdateProfilePayload, useUpdateProfile } from "@/lib/hooks/user";
+import api from "@/lib/api";
 
-// Mock user data 
-const mockUser = {
+// Mock user data for demo
+export const mockUser = {
   id: "1",
   name: "Alex Johnson",
   email: "alex.johnson@example.com",
   phone: "+234 222 123 4567",
-  location: "Lagos, NIG",
-  joinDate: "January 2025",
-  avatar: null,
+  location: "Lagos, Nigeria",
   bio: "Passionate about technology and connecting with people around the world.",
+  avatarUrl: "",
+  createdAt: "2025-01-15T10:30:00Z",
   status: "online",
+  devices: [
+    {
+      deviceId: "abc123",
+      deviceType: "desktop",
+      browser: "Chrome",
+      os: "Windows",
+      lastSeenAt: "2025-01-20T14:30:00Z"
+    },
+    {
+      deviceId: "def456",
+      deviceType: "mobile",
+      browser: "Safari",
+      os: "iOS",
+      lastSeenAt: "2025-01-19T09:15:00Z"
+    }
+  ]
 };
 
-// Profile Section 
+// Device icon helper
+const getDeviceIcon = (deviceType: string) => {
+  switch (deviceType) {
+    case 'mobile': return Smartphone;
+    case 'tablet': return Tablet;
+    default: return Monitor;
+  }
+};
+
+// Profile Section Component
 function ProfileSection({
   user,
   editedUser,
@@ -41,6 +73,8 @@ function ProfileSection({
   isEditing,
   fileInputRef,
   handleAvatarChange,
+  detectLocation,
+  isDetectingLocation
 }: any) {
   return (
     <div className="space-y-6">
@@ -49,9 +83,9 @@ function ProfileSection({
         <div className="relative group">
           <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 p-1">
             <div className="w-full h-full rounded-full bg-neutral-900 flex items-center justify-center overflow-hidden">
-              {(isEditing ? editedUser.avatar : user.avatar) ? (
+              {(isEditing ? editedUser.avatarUrl : user.avatarUrl) ? (
                 <img
-                  src={isEditing ? editedUser.avatar : user.avatar}
+                  src={isEditing ? editedUser.avatarUrl : user.avatarUrl}
                   alt="Profile"
                   className="w-full h-full object-cover"
                 />
@@ -81,7 +115,11 @@ function ProfileSection({
 
         {/* Status Indicator */}
         <div className="flex items-center space-x-2">
-          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+          <div className={`w-3 h-3 rounded-full ${
+            user.status === 'online' ? 'bg-green-500 animate-pulse' :
+            user.status === 'away' ? 'bg-yellow-500' :
+            user.status === 'busy' ? 'bg-red-500' : 'bg-gray-500'
+          }`}></div>
           <span className="text-sm text-white/60 capitalize">{user.status}</span>
         </div>
       </div>
@@ -111,21 +149,10 @@ function ProfileSection({
         {/* Email */}
         <div className="space-y-2">
           <label className="text-sm text-white/60">Email</label>
-          {isEditing ? (
-            <input
-              type="email"
-              value={editedUser.email}
-              onChange={(e) =>
-                setEditedUser({ ...editedUser, email: e.target.value })
-              }
-              className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all"
-            />
-          ) : (
-            <div className="flex items-center space-x-3 px-4 py-3 rounded-xl bg-white/5">
-              <Mail className="w-5 h-5 text-white/60" />
-              <span className="text-white">{user.email}</span>
-            </div>
-          )}
+          <div className="flex items-center space-x-3 px-4 py-3 rounded-xl bg-white/5">
+            <Mail className="w-5 h-5 text-white/60" />
+            <span className="text-white">{user.email}</span>
+          </div>
         </div>
 
         {/* Phone */}
@@ -134,16 +161,17 @@ function ProfileSection({
           {isEditing ? (
             <input
               type="tel"
-              value={editedUser.phone}
+              value={editedUser.phone || ''}
               onChange={(e) =>
                 setEditedUser({ ...editedUser, phone: e.target.value })
               }
+              placeholder="Enter phone number"
               className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all"
             />
           ) : (
             <div className="flex items-center space-x-3 px-4 py-3 rounded-xl bg-white/5">
               <Phone className="w-5 h-5 text-white/60" />
-              <span className="text-white">{user.phone}</span>
+              <span className="text-white">{user.phone || 'No phone number'}</span>
             </div>
           )}
         </div>
@@ -152,18 +180,35 @@ function ProfileSection({
         <div className="space-y-2">
           <label className="text-sm text-white/60">Location</label>
           {isEditing ? (
-            <input
-              type="text"
-              value={editedUser.location}
-              onChange={(e) =>
-                setEditedUser({ ...editedUser, location: e.target.value })
-              }
-              className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all"
-            />
+            <div className="space-y-2">
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  value={editedUser.location || ''}
+                  onChange={(e) =>
+                    setEditedUser({ ...editedUser, location: e.target.value })
+                  }
+                  placeholder="Enter location"
+                  className="flex-1 px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all"
+                />
+                <button
+                  onClick={detectLocation}
+                  disabled={isDetectingLocation}
+                  className="px-4 py-3 bg-blue-500/20 hover:bg-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl border border-blue-500/30 text-blue-400 transition-colors flex items-center space-x-2"
+                >
+                  {isDetectingLocation ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <MapPinIcon className="w-4 h-4" />
+                  )}
+                  <span className="text-sm">Detect</span>
+                </button>
+              </div>
+            </div>
           ) : (
             <div className="flex items-center space-x-3 px-4 py-3 rounded-xl bg-white/5">
               <MapPin className="w-5 h-5 text-white/60" />
-              <span className="text-white">{user.location}</span>
+              <span className="text-white">{user.location || 'No location set'}</span>
             </div>
           )}
         </div>
@@ -173,16 +218,17 @@ function ProfileSection({
           <label className="text-sm text-white/60">Bio</label>
           {isEditing ? (
             <textarea
-              value={editedUser.bio}
+              value={editedUser.bio || ''}
               onChange={(e) =>
                 setEditedUser({ ...editedUser, bio: e.target.value })
               }
               rows={3}
+              placeholder="Tell us about yourself..."
               className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all resize-none"
             />
           ) : (
             <div className="px-4 py-3 rounded-xl bg-white/5">
-              <span className="text-white">{user.bio}</span>
+              <span className="text-white">{user.bio || 'No bio added'}</span>
             </div>
           )}
         </div>
@@ -192,7 +238,13 @@ function ProfileSection({
           <Calendar className="w-5 h-5 text-white/60" />
           <div>
             <span className="text-white/60 text-sm">Joined </span>
-            <span className="text-white">{user.joinDate}</span>
+            <span className="text-white">
+              {new Date(user.createdAt).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </span>
           </div>
         </div>
       </div>
@@ -200,8 +252,18 @@ function ProfileSection({
   );
 }
 
-// Settings Section
+// Settings Section Component
 function SettingsSection() {
+  const [settings, setSettings] = useState({
+    notifications: true,
+    darkMode: true,
+    twoFactor: false
+  });
+
+  const toggleSetting = (key: keyof typeof settings) => {
+    setSettings(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
   return (
     <div className="space-y-6">
       <div className="space-y-4">
@@ -217,10 +279,18 @@ function SettingsSection() {
                 </div>
               </div>
             </div>
-            <div className="w-12 h-6 bg-blue-500 rounded-full relative">
-              <div className="w-5 h-5 bg-white rounded-full absolute top-0.5 right-0.5 transition-transform"></div>
-            </div>
+            <button
+              onClick={() => toggleSetting('notifications')}
+              className={`w-12 h-6 rounded-full relative transition-colors ${
+                settings.notifications ? 'bg-blue-500' : 'bg-white/20'
+              }`}
+            >
+              <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${
+                settings.notifications ? 'translate-x-6' : 'translate-x-0.5'
+              }`}></div>
+            </button>
           </div>
+          
           <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
             <div className="flex items-center space-x-3">
               <Palette className="w-5 h-5 text-white/60" />
@@ -229,10 +299,18 @@ function SettingsSection() {
                 <div className="text-sm text-white/60">Dark mode enabled</div>
               </div>
             </div>
-            <div className="w-12 h-6 bg-blue-500 rounded-full relative">
-              <div className="w-5 h-5 bg-white rounded-full absolute top-0.5 right-0.5 transition-transform"></div>
-            </div>
+            <button
+              onClick={() => toggleSetting('darkMode')}
+              className={`w-12 h-6 rounded-full relative transition-colors ${
+                settings.darkMode ? 'bg-blue-500' : 'bg-white/20'
+              }`}
+            >
+              <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${
+                settings.darkMode ? 'translate-x-6' : 'translate-x-0.5'
+              }`}></div>
+            </button>
           </div>
+          
           <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
             <div className="flex items-center space-x-3">
               <Globe className="w-5 h-5 text-white/60" />
@@ -244,6 +322,7 @@ function SettingsSection() {
           </div>
         </div>
       </div>
+      
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-white">Privacy & Security</h3>
         <div className="space-y-3">
@@ -257,6 +336,16 @@ function SettingsSection() {
                 </div>
               </div>
             </div>
+            <button
+              onClick={() => toggleSetting('twoFactor')}
+              className={`w-12 h-6 rounded-full relative transition-colors ${
+                settings.twoFactor ? 'bg-blue-500' : 'bg-white/20'
+              }`}
+            >
+              <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${
+                settings.twoFactor ? 'translate-x-6' : 'translate-x-0.5'
+              }`}></div>
+            </button>
           </div>
         </div>
       </div>
@@ -264,33 +353,137 @@ function SettingsSection() {
   );
 }
 
-// Profile Page
-const ProfilePage = ({ onBack }: { onBack: () => void }) => {
-  const [user, setUser] = useState(mockUser);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedUser, setEditedUser] = useState(user);
-  const [activeSection, setActiveSection] = useState("profile");
-  const fileInputRef = useRef<any>(null);
+// Devices Section Component
+function DevicesSection({ user, onRemoveDevice }: any) {
+  return (
+    <div className="space-y-6">
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-white">Active Devices</h3>
+        <div className="space-y-3">
+          {user.devices?.map((device: any) => {
+            const DeviceIcon = getDeviceIcon(device.deviceType);
+            const lastSeen = new Date(device.lastSeenAt);
+            const isCurrentDevice = device.deviceId === device.deviceId;
+            return (
+              <div key={device.deviceId} className="flex items-center justify-between px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
+                <div className="flex items-center space-x-3">
+                  <DeviceIcon className="w-5 h-5 text-white/60" />
+                  <div>
+                    <div className="text-white flex items-center space-x-2">
+                      <span>{device.browser} on {device.os}</span>
+                      {isCurrentDevice && (
+                        <span className="px-2 py-0.5 text-xs bg-green-500/20 text-green-400 rounded-full">
+                          Current
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-sm text-white/60">
+                      Last active: {lastSeen.toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+                  </div>
+                </div>
+                {!isCurrentDevice && (
+                  <button
+                    onClick={() => onRemoveDevice(device.deviceId)}
+                    className="p-2 hover:bg-red-500/20 rounded-lg transition-colors text-red-400"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="text-xs text-white/60 px-4">
+          We keep track of your active devices for security purposes. You can remove devices you no longer use.
+        </div>
+      </div>
+    </div>
+  );
+}
 
-  const handleSave = () => {
-    setUser(editedUser);
-    setIsEditing(false);
+// Main Profile Page Component
+const ProfilePage = ({ onBack }: {onBack: () => void}) => {
+  // const [user, setUser] = useState(mockUser);
+  const { user, refetchUser } = useAuth()
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedUser, setEditedUser] =  useState<UpdateProfilePayload>({
+  name: user?.name || "",
+  phone: user?.phone || "",
+  location: user?.location || "",
+  bio: user?.bio || "",
+  avatarUrl: user?.avatarUrl || "",
+});
+  const [activeSection, setActiveSection] = useState("profile");
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const fileInputRef = useRef(null);
+  const { mutateAsync: updateProfile, isPending: isSaving } = useUpdateProfile();
+
+  useEffect(() => {
+    setEditedUser(user ?? {});
+  }, [user]);
+
+  const handleSave = async () => {
+    console.log(editedUser)
+      await updateProfile(editedUser);
+      setIsEditing(false);
   };
 
   const handleCancel = () => {
-    setEditedUser(user);
+    setEditedUser(user ?? {});
     setIsEditing(false);
   };
 
-  const handleAvatarChange = (event: any) => {
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        // setEditedUser({ ...editedUser, avatar: e.target?.result });
-        console.log(e.target?.result);
-      };
-      reader.readAsDataURL(file);
+      const formData = new FormData();
+      formData.append("avatar", file);
+
+      await api.post("/auth/upload-avatar", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+
+      await refetchUser();
+
+    }
+  };
+
+  const detectLocation = async () => {
+    setIsDetectingLocation(true);
+    try {
+      // Simulate location detection
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // In a real app, you'd use the userService.detectAndUpdateLocation()
+      // const detectedLocation = "Lagos, Nigeria"; // Mock detected location
+      // setEditedUser({ ...editedUser, location: detectedLocation });
+    } catch (error) {
+      console.error('Location detection failed:', error);
+      // Handle error
+    } finally {
+      setIsDetectingLocation(false);
+    }
+  };
+
+  const handleRemoveDevice = async (deviceId: string) => {
+    try {
+      // In a real app: await userService.removeDevice(deviceId);
+      
+      // Update local state
+      // setUser(prev => ({
+      //   ...prev,
+      //   devices: prev.devices.filter(d => d.deviceId !== deviceId)
+      // }));
+      console.log(deviceId);
+    } catch (error) {
+      console.error('Failed to remove device:', error);
     }
   };
 
@@ -302,7 +495,7 @@ const ProfilePage = ({ onBack }: { onBack: () => void }) => {
           <div className="flex items-center space-x-4">
             <button
               onClick={onBack}
-              className="p-2 -ml-2 hover:bg-white/10 rounded-xl transition-colors"
+              className="md:hidden p-2 -ml-2 hover:bg-white/10 rounded-xl transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -319,15 +512,21 @@ const ProfilePage = ({ onBack }: { onBack: () => void }) => {
               >
                 <button
                   onClick={handleCancel}
-                  className="p-2 hover:bg-red-500/20 rounded-xl transition-colors text-red-400"
+                  disabled={isSaving}
+                  className="p-2 hover:bg-red-500/20 rounded-xl transition-colors text-red-400 disabled:opacity-50"
                 >
                   <X className="w-5 h-5" />
                 </button>
                 <button
                   onClick={handleSave}
-                  className="p-2 hover:bg-green-500/20 rounded-xl transition-colors text-green-400"
+                  disabled={isSaving}
+                  className="p-2 hover:bg-green-500/20 rounded-xl transition-colors text-green-400 disabled:opacity-50 flex items-center"
                 >
-                  <Check className="w-5 h-5" />
+                  {isSaving ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Check className="w-5 h-5" />
+                  )}
                 </button>
               </motion.div>
             ) : (
@@ -348,26 +547,23 @@ const ProfilePage = ({ onBack }: { onBack: () => void }) => {
       <div className="max-w-2xl mx-auto p-4">
         {/* Navigation Tabs */}
         <div className="flex space-x-1 bg-white/5 rounded-xl p-1 mb-6">
-          <button
-            onClick={() => setActiveSection("profile")}
-            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-              activeSection === "profile"
-                ? "bg-white/10 text-white"
-                : "text-white/60 hover:text-white"
-            }`}
-          >
-            Profile
-          </button>
-          <button
-            onClick={() => setActiveSection("settings")}
-            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-              activeSection === "settings"
-                ? "bg-white/10 text-white"
-                : "text-white/60 hover:text-white"
-            }`}
-          >
-            Settings
-          </button>
+          {[
+            { id: 'profile', label: 'Profile' },
+            { id: 'devices', label: 'Devices' },
+            { id: 'settings', label: 'Settings' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveSection(tab.id)}
+              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                activeSection === tab.id
+                  ? "bg-white/10 text-white"
+                  : "text-white/60 hover:text-white"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {/* Content */}
@@ -377,7 +573,7 @@ const ProfilePage = ({ onBack }: { onBack: () => void }) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          {activeSection === "profile" ? (
+          {activeSection === "profile" && (
             <ProfileSection
               user={user}
               editedUser={editedUser}
@@ -385,10 +581,19 @@ const ProfilePage = ({ onBack }: { onBack: () => void }) => {
               isEditing={isEditing}
               fileInputRef={fileInputRef}
               handleAvatarChange={handleAvatarChange}
+              detectLocation={detectLocation}
+              isDetectingLocation={isDetectingLocation}
             />
-          ) : (
-            <SettingsSection />
           )}
+          
+          {activeSection === "devices" && (
+            <DevicesSection
+              user={user}
+              onRemoveDevice={handleRemoveDevice}
+            />
+          )}
+          
+          {activeSection === "settings" && <SettingsSection />}
         </motion.div>
       </div>
     </div>
