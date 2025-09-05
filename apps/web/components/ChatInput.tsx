@@ -92,7 +92,7 @@ export function ChatInput({ send, activeConv, socket }: any) {
   const borderRadiusClass = height <= 60 ? "rounded-full" : "rounded-3xl";
 
   return (
-    <div className="p-3 border-t sticky-input bg-neutral-950/80 border-white/10 backdrop-blur flex gap-2">
+    <div className="p-3 border-t bottom-0 sticky bg-neutral-950/80 border-white/10 backdrop-blur flex gap-2">
       <div
         className={`bg-white/5 pb-1 flex items-baseline-last w-full ${borderRadiusClass}`}
       >

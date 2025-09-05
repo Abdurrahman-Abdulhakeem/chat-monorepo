@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -10,7 +9,7 @@ import { initSocket } from "@/lib/socket";
 import { useMessages, useSendMessage } from "@/lib/hooks/chat";
 import { Conv, Msg } from "@/lib/types";
 import { Socket } from "socket.io-client";
-import Image from "next/image";
+// import Image from "next/image";
 import { ChatInput } from "@/components/ChatInput";
 import Sidebar from "@/components/Sidebar";
 
@@ -94,7 +93,7 @@ export default function ChatPage() {
           showChat ? "flex" : "hidden"
         } md:flex`}
       >
-        <div className="sticky-header flex items-center gap-3 p-4 border-b border-white/10 bg-neutral-950/80">
+        <div className="sticky z-[60] top-0 flex items-center gap-3 p-4 border-b border-white/10 bg-neutral-950/80">
           <button
             onClick={() => setShowChat(false)}
             className="md:hidden p-2 -ml-2"
@@ -138,7 +137,7 @@ export default function ChatPage() {
                   height={100}
                   src={m.media?.url}
                   alt="shared"
-                  className="max-w-[200px] rounded-2xl object-cover shadow"
+                  className="max-w-[300px] w-[250px] md:w-[300px] rounded-2xl object-cover shadow"
                 />
               ) : (
                 <div
