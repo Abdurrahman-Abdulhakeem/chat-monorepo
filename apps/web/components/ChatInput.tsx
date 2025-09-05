@@ -92,16 +92,16 @@ export function ChatInput({ send, activeConv, socket }: any) {
   const borderRadiusClass = height <= 60 ? "rounded-full" : "rounded-3xl";
 
   return (
-    <div className="p-3 border-t bottom-0 sticky bg-neutral-950/80 border-white/10 backdrop-blur flex gap-2">
+    <div className="p-3 bg-neutral-950/80 border-white/10 backdrop-blur flex gap-2 backdrop-fallback supports-[backdrop-filter:blur(2px)]:backdrop-blur">
       <div
         className={`bg-white/5 pb-1 flex items-baseline-last w-full ${borderRadiusClass}`}
       >
         <div
           {...getRootProps()}
-          className="cursor-pointer hover:bg-white/5 transition fixed left-5 w-10 h-10 justify-center px-3 py-2 pb-1 rounded-full flex items-center"
+          className="cursor-pointer hover:bg-white/5 transition absolute left-5 top-1/2 -translate-y-1/2 w-10 h-10 justify-center rounded-full flex items-center"
         >
           <input {...getInputProps()} />
-          <ImagePlus />
+          <ImagePlus className="size-5 mt-1" />
         </div>
         <textarea
           ref={textareaRef}
@@ -116,7 +116,7 @@ export function ChatInput({ send, activeConv, socket }: any) {
         {value.trim() && (
           <button
             onClick={handleSendText}
-            className="px- py-3 h-10 w-10 flex justify-center fixed right-5 rounded-full transition hover:bg-white/60 cursor-pointer bg-white/85 text-black "
+            className="px- py-3 h-10 w-10 flex justify-center absolute right-5 rounded-full transition hover:bg-white/60 cursor-pointer bg-white/85 text-black "
           >
             <SendHorizontal className="w-5 h-5 rotate-12 skew-x-[25deg]" />
           </button>
@@ -124,7 +124,7 @@ export function ChatInput({ send, activeConv, socket }: any) {
       </div>
 
       {preview && (
-        <div className="absolute bottom-16 right-4 bg-black/80 p-2 rounded-lg">
+        <div className="absolute bottom-16 right-4 bg-black/80 p-2 z-30 rounded-lg">
           <XCircle
             onClick={() => setPreview(null)}
             className="w-5 h-5 hover:text-gray-500 transition cursor-pointer"

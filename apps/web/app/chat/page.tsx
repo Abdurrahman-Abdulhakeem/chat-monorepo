@@ -77,84 +77,105 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="h-screen grid md:grid-cols-[360px_1fr]">
-      {/* Sidebar */}
-      <Sidebar
-        activeConv={activeConv}
-        setActiveConv={setActiveConv}
-        setShowChat={setShowChat}
-        refetchMessages={refetchMessages}
-        showChat={showChat}
-      />
+    <>
+      <style jsx global>{`
+        .ios-smooth-scroll {
+          -webkit-overflow-scrolling: touch;
+        }
+        /* Blur fallback for Safari versions without backdrop-compositing */
+        @supports not (backdrop-filter: blur(2px)) {
+          .backdrop-fallback {
+            background-color: rgba(10, 10, 10, 0.9) !important;
+          }
+        }
+      `}</style>
+      <div className="h-screen grid md:grid-cols-[360px_1fr]">
+        {/* Sidebar */}
+        <Sidebar
+          activeConv={activeConv}
+          setActiveConv={setActiveConv}
+          setShowChat={setShowChat}
+          refetchMessages={refetchMessages}
+          showChat={showChat}
+        />
 
-      {/* Chat */}
-      <main
-        className={`relative overflow-hidden flex flex-col h-full ${
-          showChat ? "flex" : "hidden"
-        } md:flex`}
-      >
-        <div className="sticky z-50 top-0 flex items-center gap-3 p-4 border-b border-white/10 bg-neutral-950/80">
-          <button
-            onClick={() => setShowChat(false)}
-            className="md:hidden p-2 -ml-2"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div className="size-10 rounded-2xl bg-white/10" />
-          <div>
-            <div className="font-medium">
-              {activeConv?.peer?.name || "Select a chat"}
-            </div>
-            <div className="text-xs text-white/60 min-h-4">
-              <AnimatePresence>
-                {typing && (
-                  <motion.span
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    typing…
-                  </motion.span>
-                )}
-              </AnimatePresence>
+        {/* Chat */}
+        <main
+          className={`relative flex flex-col h-[100dvh] min-h-0 ${
+            showChat ? "flex" : "hidden"
+          } md:flex`}
+        >
+          {/* Sticky header */}
+          <div className="sticky top-0 z-20 border-b border-white/10 bg-neutral-950/80 supports-[backdrop-filter:blur(2px)]:backdrop-blur backdrop-fallback transform-gpu">
+            <div className="flex items-center gap-3 p-4">
+              <button
+                onClick={() => setShowChat(false)}
+                className="md:hidden p-2 -ml-2"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <div className="size-10 rounded-2xl bg-white/10" />
+              <div>
+                <div className="font-medium">
+                  {activeConv?.peer?.name || "Select a chat"}
+                </div>
+                <div className="text-xs text-white/60 min-h-4">
+                  <AnimatePresence>
+                    {typing && (
+                      <motion.span
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                      >
+                        typing…
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <ul className="flex-1 overflow-y-auto flex flex-col-reverse p-4 gap-3">
-          {messages?.map((m) => (
-            <motion.li
-              key={m.clientId ?? m._id}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`flex ${
-                m.from === meId ? "justify-end" : "justify-start"
-              }`}
-            >
-              {m.kind === "image" && m.media?.url ? (
-                <img
-                  width={100}
-                  height={100}
-                  src={m.media?.url}
-                  alt="shared"
-                  className="max-w-[300px] w-[250px] md:w-[300px] rounded-2xl object-cover shadow"
-                />
-              ) : (
-                <div
-                  className={`inline-block max-w-[75%] px-3 py-2 rounded-2xl break-words ${
-                    m.from === meId
-                      ? "bg-white/85 text-black rounded-br-sm"
-                      : "bg-white/10 backdrop-blur rounded-bl-sm"
-                  }`}
-                >
-                  {m.text}
-                </div>
-              )}
-            </motion.li>
-          ))}
-        </ul>
-        <ChatInput send={send} activeConv={activeConv} socket={socket} />
-      </main>
-    </div>
+          {/* Scrollable messages (anchored to bottom) */}
+          <ul className="flex-1 min-h-0 overflow-y-auto overscroll-contain flex flex-col-reverse p-4 gap-3 ios-smooth-scroll will-change-transform">
+            {messages?.map((m) => (
+              <motion.li
+                key={m.clientId ?? m._id}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`flex ${
+                  m.from === meId ? "justify-end" : "justify-start"
+                }`}
+              >
+                {m.kind === "image" && m.media?.url ? (
+                  <img
+                    width={100}
+                    height={100}
+                    src={m.media?.url}
+                    alt="shared"
+                    className="max-w-[300px] w-[150px] md:w-[300px] rounded-2xl object-cover shadow"
+                  />
+                ) : (
+                  <div
+                    className={`inline-block max-w-[75%] px-3 py-2 rounded-2xl break-words ${
+                      m.from === meId
+                        ? "bg-white/85 text-black rounded-br-sm"
+                        : "bg-white/10 supports-[backdrop-filter:blur(2px)]:backdrop-blur rounded-bl-sm"
+                    }`}
+                  >
+                    {m.text}
+                  </div>
+                )}
+              </motion.li>
+            ))}
+          </ul>
+
+          {/* Sticky input wrapper (keeps input in normal flow; not overlay) */}
+          <div className="sticky bottom-0 z-20 border-t border-white/10 bg-neutral-950/80 supports-[backdrop-filter:blur(2px)]:backdrop-blur backdrop-fallback transform-gpu">
+            <ChatInput send={send} activeConv={activeConv} socket={socket} />
+          </div>
+        </main>
+      </div>
+    </>
   );
 }
