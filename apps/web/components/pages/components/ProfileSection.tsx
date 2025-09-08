@@ -20,6 +20,7 @@ function ProfileSection({
   handleAvatarChange,
   detectLocation,
   isDetectingLocation,
+  isUploadAvatarLoading,
 }: any) {
   return (
     <div className="space-y-6">
@@ -27,13 +28,19 @@ function ProfileSection({
       <div className="flex flex-col items-center space-y-4">
         <div className="relative group">
           <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 p-1">
-            <div className="w-full h-full rounded-full bg-neutral-900 flex items-center justify-center overflow-hidden">
+            <div className="w-full h-full rounded-full bg-neutral-900 flex items-center justify-center overflow-hidden relative">
               {(isEditing ? editedUser.avatarUrl : user.avatarUrl) ? (
+                <>
                 <img
                   src={isEditing ? editedUser.avatarUrl : user.avatarUrl}
                   alt="Profile"
                   className="w-full h-full object-cover"
                 />
+                {isUploadAvatarLoading && 
+                <div className="absolute flex items-center justify-center transition bg-black/40 backdrop-blur-xs h-full w-full">
+                <Loader2 className="animate-spin text-white/50 w-7 h-7"/>
+                    </div>}
+                </>
               ) : (
                 <User className="w-16 h-16 text-white/60" />
               )}

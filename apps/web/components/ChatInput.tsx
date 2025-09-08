@@ -1,15 +1,22 @@
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState, useRef } from "react";
-import { useDropzone } from "react-dropzone";
-import { SendHorizontal, XCircle, ImagePlus } from "lucide-react";
+import { SendHorizontal, XCircle, ImagePlus, Loader2 } from "lucide-react";
 import api from "@/lib/api";
 
-export function ChatInput({ send, activeConv, socket }: any) {
+export function ChatInput({
+  send,
+  activeConv,
+  socket,
+  preview,
+  setPreview,
+  previewFile,
+  getInputProps,
+  open,
+}: any) {
   const [value, setValue] = useState("");
-  const [preview, setPreview] = useState<string | null>(null);
-  const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [height, setHeight] = useState(0);
+  const [imgLoading, setImgLoading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const MAX_HEIGHT = 150; // px (~6 lines)
@@ -21,19 +28,6 @@ export function ChatInput({ send, activeConv, socket }: any) {
       typing: value.length > 0,
     });
   }, [value, socket, activeConv]);
-
-  const onDrop = (acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (!file) return;
-    setPreview(URL.createObjectURL(file));
-    setPreviewFile(file);
-  };
-
-  const { getRootProps, getInputProps } = useDropzone({
-    accept: { "image/*": [] },
-    multiple: false,
-    onDrop,
-  });
 
   const handleSendText = () => {
     if (!value.trim()) return;
@@ -49,13 +43,14 @@ export function ChatInput({ send, activeConv, socket }: any) {
   };
 
   const handleSendImage = async () => {
+    setImgLoading(true);
     if (!previewFile) return;
 
     const form = new FormData();
     form.append("file", previewFile);
 
     const { data } = await api.post("/upload", form);
-    console.log(data);
+    setImgLoading(false);
 
     if (data.url) {
       send({
@@ -97,7 +92,7 @@ export function ChatInput({ send, activeConv, socket }: any) {
         className={`bg-white/5 pb-1 flex items-baseline-last w-full ${borderRadiusClass}`}
       >
         <div
-          {...getRootProps()}
+          onClick={open} // manually trigger file picker
           className="cursor-pointer hover:bg-white/5 transition absolute left-5 top-1/2 -translate-y-1/2 w-10 h-10 justify-center rounded-full flex items-center"
         >
           <input {...getInputProps()} />
@@ -129,7 +124,14 @@ export function ChatInput({ send, activeConv, socket }: any) {
             onClick={() => setPreview(null)}
             className="w-5 h-5 hover:text-gray-500 transition cursor-pointer"
           />
-          <img src={preview} alt="preview" className="max-w-[120px]" />
+          <div className="relative">
+            {imgLoading && (
+              <span className="flex items-center justify-center h-full w-full absolute transition bg-black/40">
+                <Loader2 className="animate-spin text-white/80 w-7 h-7" />
+              </span>
+            )}
+            <img src={preview} alt="preview" className="max-w-[120px]" />
+          </div>
           <div className="flex gap-2 mt-1 w-full">
             <button
               onClick={handleSendImage}

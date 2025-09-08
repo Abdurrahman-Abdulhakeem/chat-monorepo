@@ -2,7 +2,9 @@ import "dotenv/config";
 import { z } from "zod";
 
 const envSchema = z.object({
-  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  NODE_ENV: z
+    .enum(["development", "production", "test"])
+    .default("development"),
   PORT: z.string().transform(Number).default("4000"),
   MONGO_URL: z.string(),
   MONGO_DB: z.string(),
@@ -11,6 +13,9 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string(),
   CORS_ORIGIN: z.string(),
   BASE_URL: z.string().default("http://localhost:4000"),
+  CLOUDINARY_CLOUD_NAME: z.string(),
+  CLOUDINARY_API_KEY: z.string(),
+  CLOUDINARY_API_SECRET: z.string(),
 });
 
 export const env = envSchema.parse(process.env);

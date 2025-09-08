@@ -1,33 +1,42 @@
 import express from "express";
 import multer from "multer";
-import path from "path";
-import fs from "fs";
-import { v4 as uuid } from "uuid";
 import { env } from "../config/environment.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { User } from "../storage.js";
+import { v2 as cloudinary } from "cloudinary";
+import streamifier from "streamifier";
 
 const router = express.Router();
 
-// store files in ./uploads folder
-const upload = multer({ dest: "uploads/" });
+// configure cloudinary once
+cloudinary.config({
+  cloud_name: env.CLOUDINARY_CLOUD_NAME,
+  api_key: env.CLOUDINARY_API_KEY,
+  api_secret: env.CLOUDINARY_API_SECRET,
+});
 
-// POST /upload
+// memory storage (so we don't save to disk)
+const upload = multer({ storage: multer.memoryStorage() });
+
 router.post("/", upload.single("file"), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
 
-    // rename file to unique name
-    const ext = path.extname(req.file.originalname);
-    const newName = `${uuid()}${ext}`;
-    const newPath = path.join("uploads", newName);
+    // stream buffer - cloudinary
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: "chat_app" }, // optional folder
+      (error, result) => {
+        if (error) {
+          console.error("Cloudinary error:", error);
+          return res.status(500).json({ error: "Upload failed" });
+        }
+        return res.json({ url: result?.secure_url });
+      }
+    );
 
-    fs.renameSync(req.file.path, newPath);
-
-    // serve from static /uploads
-    const fileUrl = `${env.BASE_URL}/uploads/${newName}`;
-
-    res.json({ url: fileUrl });
+    streamifier.createReadStream(req.file.buffer).pipe(stream);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Upload failed" });
@@ -45,22 +54,28 @@ router.post(
 
       const userId = req.userId;
 
-      // rename file to unique name
-      const ext = path.extname(req.file.originalname);
-      const newName = `${uuid()}${ext}`;
-      const newPath = path.join("uploads", newName);
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: "chat_app/avatars",
+          transformation: [{ width: 300, height: 300, crop: "fill" }], // resize
+        },
+        async (error, result) => {
+          if (error) {
+            console.error("Cloudinary error:", error);
+            return res.status(500).json({ error: "Upload failed" });
+          }
 
-      fs.renameSync(req.file.path, newPath);
+          // update user profile
+          await User.findByIdAndUpdate(userId, { avatarUrl: result?.secure_url });
 
-      const fileUrl = `${env.BASE_URL}/uploads/${newName}`;
+          res.json({ url: result?.secure_url });
+        }
+      );
 
-      // update user profile avatar
-      await User.findByIdAndUpdate(userId, { avatarUrl: fileUrl });
-
-      res.json({ avatarUrl: fileUrl });
+      streamifier.createReadStream(req.file.buffer).pipe(stream);
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: "Profile picture update failed" }); 
+      res.status(500).json({ error: "Profile pic update failed" });
     }
   }
 );

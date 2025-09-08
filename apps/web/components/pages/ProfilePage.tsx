@@ -25,6 +25,7 @@ const ProfilePage = ({ onBack }: { onBack: () => void }) => {
   });
   const [activeSection, setActiveSection] = useState("profile");
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [isUploadAvatarLoading, setIsUploadAvatarLoading] = useState(false);
   const fileInputRef = useRef(null);
   const { mutateAsync: updateProfile, isPending: isSaving } =
     useUpdateProfile();
@@ -49,6 +50,7 @@ const ProfilePage = ({ onBack }: { onBack: () => void }) => {
   const handleAvatarChange = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
+    setIsUploadAvatarLoading(true);
     const file = event.target.files?.[0];
     if (file) {
       const formData = new FormData();
@@ -59,6 +61,7 @@ const ProfilePage = ({ onBack }: { onBack: () => void }) => {
       });
 
       await refetchUser();
+      setIsUploadAvatarLoading(false);
     }
   };
 
@@ -169,6 +172,7 @@ const ProfilePage = ({ onBack }: { onBack: () => void }) => {
               handleAvatarChange={handleAvatarChange}
               detectLocation={detectLocation}
               isDetectingLocation={isDetectingLocation}
+              isUploadAvatarLoading={isUploadAvatarLoading}
             />
           )}
 
