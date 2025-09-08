@@ -54,7 +54,7 @@ const ProfilePage = ({ onBack }: { onBack: () => void }) => {
       const formData = new FormData();
       formData.append("avatar", file);
 
-      await api.post("/auth/upload-avatar", formData, {
+      await api.post("/upload/avatar", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 

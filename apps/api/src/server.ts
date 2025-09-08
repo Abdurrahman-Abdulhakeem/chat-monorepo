@@ -1,3 +1,4 @@
+import path from "path";
 import "dotenv/config";
 import express from "express";
 import http from "http";
@@ -121,7 +122,7 @@ app.get("/messages/:convId", async (req, res) => {
     const { convId } = req.params;
     const msgs = await Message.find({ convId })
       .sort({ sentAt: -1 })
-      .limit(50)
+      .limit(120)
       .lean();
     res.json({ messages: msgs });
   } catch {
@@ -142,7 +143,7 @@ app.get("/presence/:userId", async (req, res) => {
 });
 
 app.use("/upload", uploadRouter);
-app.use("/uploads", express.static("uploads"));
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 // --- HTTP + Socket server ---
 const server = http.createServer(app);
