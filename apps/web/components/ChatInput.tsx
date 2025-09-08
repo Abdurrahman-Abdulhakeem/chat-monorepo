@@ -118,7 +118,7 @@ export function ChatInput({
       >
         <div
           onClick={open} // manually trigger file picker
-          className="cursor-pointer hover:bg-white/5 transition absolute left-5 w-10 h-10 justify-center rounded-full flex items-center"
+          className="cursor-pointer hover:bg-white/5 transition absolute bottom-4 left-5 w-10 h-10 justify-center rounded-full flex items-center"
         >
           <input {...getInputProps()} />
           <ImagePlus className="size-5 mt-1" />
@@ -136,7 +136,7 @@ export function ChatInput({
         {value.trim() && (
           <button
             onClick={handleSendText}
-            className="px- py-3 h-10 w-10 flex justify-center absolute right-5 rounded-full transition hover:bg-white/60 cursor-pointer bg-white/85 text-black "
+            className="px- py-3 h-10 w-10 flex justify-center absolute right-5 bottom-4 rounded-full transition hover:bg-white/60 cursor-pointer bg-white/85 text-black "
           >
             <SendHorizontal className="w-5 h-5 rotate-12 skew-x-[25deg]" />
           </button>
