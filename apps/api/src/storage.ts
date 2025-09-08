@@ -6,11 +6,25 @@ export async function connectMongo(url: string, dbName: string) {
 
 // User
 
+export interface Device {
+  deviceId: string;
+  refreshToken: string;
+  userAgent: string;
+  ip?: string;
+  deviceType: "mobile" | "tablet" | "desktop" | string;
+  browser?: string;
+  os?: string;
+  lastSeenAt: Date;
+}
 
-const DeviceSchema = new Schema({
+const DeviceSchema = new Schema<Device>({
   deviceId: { 
     type: String, 
     required: true 
+  },
+  refreshToken: { 
+    type: String,
+    default: "",
   },
   userAgent: { 
     type: String, 
@@ -47,7 +61,7 @@ export interface IUser extends Document {
   bio?: string | null;
   location?: string | null;
   passwordHash: string;
-  devices: typeof DeviceSchema[];
+  devices: Device[];
   dateOfBirth?: Date | null;
   gender?: "male" | "female" | "other" | "prefer_not_to_say" | null;
   timezone?: string | null;
@@ -124,7 +138,7 @@ const UserSchema = new Schema<IUserDocument>(
     status: {
       type: String,
       enum: ["online", "offline", "away", "busy"],
-      default: "offline",
+      default: "online",
     },
     lastActiveAt: { type: Date, default: Date.now },
     isEmailVerified: { type: Boolean, default: false },

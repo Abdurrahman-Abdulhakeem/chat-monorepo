@@ -20,3 +20,20 @@ export function useUpdateProfile() {
     },
   });
 }
+
+// Delete device
+export function useDeleteDevice() {
+  const queryClient = useQueryClient();
+  const { refetchUser } = useAuth();
+
+  return useMutation({
+    mutationFn: async (deviceId: string) => {
+      const { data } = await api.delete(`/auth/devices/${deviceId}`);
+      return data.user;
+    },
+    onSuccess: async (updatedUser) => {
+      queryClient.setQueryData(["user"], updatedUser);
+      await refetchUser();
+    },
+  });
+}

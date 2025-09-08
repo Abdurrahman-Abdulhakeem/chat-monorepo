@@ -72,7 +72,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession({
       access: tokens.access,
       refresh: tokens.refresh,
-      user: userData
+      user: userData,
+      currentDeviceId: data.currentDeviceId
     });
     
     setUser(userData);

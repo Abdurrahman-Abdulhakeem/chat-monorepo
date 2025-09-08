@@ -1,12 +1,14 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../config/environment.js";
+import { User } from "storage.js";
 
 export interface AuthenticatedRequest extends Request {
+  user: object | any;
   userId: string;
 }
 
-export function authenticateToken(
+export async function authenticateToken(
   req: Request,
   res: Response,
   next: NextFunction
@@ -20,6 +22,12 @@ export function authenticateToken(
   try { 
     const payload = jwt.verify(token, env.JWT_ACCESS_SECRET) as any;
     (req as AuthenticatedRequest).userId = payload.sub;
+
+    const currentUser = await User.findById(payload.sub);
+    if (!currentUser) {
+      return next(new Error("User no longer exists"));
+    }
+    (req as AuthenticatedRequest).user = currentUser
     next();
   } catch (error) {
     return res.status(401).json({ error: "Invalid token" });

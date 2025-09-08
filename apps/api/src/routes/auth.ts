@@ -86,21 +86,23 @@ router.post("/register", async (req: Request, res: Response) => {
       name,
       email,
       passwordHash,
-      devices: [{ deviceId, ...deviceInfo }],
+      devices: [],
     });
-
-    await user.save();
 
     const id: string = user._id.toString();
     const accessToken = signAccess(id);
     const refreshToken = signRefresh(id);
 
+    user.devices.push({ deviceId, refreshToken, ...deviceInfo });
+    await user.save();
+
     res.status(201).json({
       message: "User registered successfully",
-      token: { 
-        access: accessToken, 
-        refresh: refreshToken 
+      token: {
+        access: accessToken,
+        refresh: refreshToken,
       },
+      currentDeviceId: deviceId,
       user: {
         id: user._id,
         name: user.name,
@@ -136,27 +138,32 @@ router.post("/login", async (req: Request, res: Response) => {
       deviceInfo.ip || ""
     );
 
-    const existingDeviceIndex = user.devices.findIndex(
-      (d: any) => d.deviceId === deviceId
-    );
-    if (existingDeviceIndex >= 0) {
-      user.devices[existingDeviceIndex] = { deviceId, ...deviceInfo };
-    } else {
-      user.devices.push({ deviceId, ...deviceInfo });
-    }
-
-    await user.save();
-
     const id: any = user._id.toString();
     const accessToken = signAccess(id);
     const refreshToken = signRefresh(id);
 
+    const existingDeviceIndex = user.devices.findIndex(
+      (d: any) => d.deviceId === deviceId
+    );
+    if (existingDeviceIndex >= 0) {
+      user.devices[existingDeviceIndex] = {
+        deviceId,
+        refreshToken,
+        ...deviceInfo,
+      };
+    } else {
+      user.devices.push({ deviceId, refreshToken, ...deviceInfo });
+    }
+
+    await user.save();
+
     res.json({
       message: "Login successful",
-      token: { 
-        access: accessToken, 
-        refresh: refreshToken 
+      token: {
+        access: accessToken,
+        refresh: refreshToken,
       },
+      currentDeviceId: deviceId,
       user: {
         id: user._id,
         name: user.name,
@@ -182,13 +189,30 @@ router.post("/login", async (req: Request, res: Response) => {
 });
 
 // Refresh
-router.post("/refresh", async (req: any, res: any) => { 
+router.post("/refresh", async (req: any, res: any) => {
+  const { refreshToken } = req.body;
+  if (!refreshToken) {
+    return res.status(401).json({ error: "Missing refresh token" });
+  }
+
   try {
-    const { refreshToken } = req.body;
     const payload = verifyRefresh(refreshToken);
-    const accessToken = signAccess(payload.sub);
-    return res.json({ access: accessToken });
-  } catch (err) {
+    const user = await User.findById(payload.sub);
+
+    if (!user) return res.status(401).json({ error: "Invalid user" });
+
+    const device = user.devices.find(
+      (d: any) => d.refreshToken === refreshToken
+    );
+    if (!device) {
+      return res
+        .status(401)
+        .json({ error: "Refresh token invalid or revoked" });
+    }
+
+    const accessToken = signAccess(user._id.toString());
+    res.json({ access: accessToken });
+  } catch {
     return res.status(401).json({ error: "Invalid refresh token" });
   }
 });
@@ -209,6 +233,7 @@ router.get("/profile", authenticateToken, async (req: any, res: Response) => {
         avatarUrl: user.avatarUrl,
         phone: user.phone,
         bio: user.bio,
+        status: user.status,
         location: user.location,
         createdAt: user.createdAt,
         devices: user.devices.map((d: any) => ({
@@ -239,7 +264,6 @@ router.put("/profile", authenticateToken, async (req: any, res: Response) => {
     if (location) updateData.location = location;
     if (avatarUrl) updateData.avatarUrl = avatarUrl;
 
-
     const user = await User.findByIdAndUpdate(req.userId, updateData, {
       new: true,
       runValidators: true,
@@ -259,24 +283,61 @@ router.put("/profile", authenticateToken, async (req: any, res: Response) => {
   }
 });
 
-// Remove device
-router.delete("/devices/:deviceId", authenticateToken, async (req: any, res: Response) => {
+// Get location from IP
+router.get("/location", authenticateToken, async (req, res) => {
   try {
-    const { deviceId } = req.params;
+    const ip =
+      req.ip || req.connection.remoteAddress || req.headers["x-forwarded-for"];
 
-    const user: any = await User.findById(req.user?.userId);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
+    const response = await fetch(`https://ipapi.co/${ip}/json/`);
+    const locationData: any = await response.json();
+
+    if (locationData.error) {
+      return res.status(400).json({ error: "Could not determine location" });
     }
 
-    user.devices = user.devices.filter((d: any) => d.deviceId !== deviceId);
-    await user.save();
-
-    res.json({ message: "Device removed successfully" });
+    res.json({
+      location: {
+        city: locationData.city,
+        region: locationData.region,
+        country: locationData.country_name,
+        countryCode: locationData.country_code,
+        timezone: locationData.timezone,
+        latitude: locationData.latitude,
+        longitude: locationData.longitude,
+        formatted: `${locationData.city}, ${locationData.region}, ${locationData.country_name}`,
+      },
+    });
   } catch (error) {
-    console.error("Device removal error:", error);
-    res.status(500).json({ error: "Internal server error" });
+    console.error("Location detection error:", error);
+    res.status(500).json({ error: "Failed to detect location" });
   }
-}); 
+});
+
+// Remove device
+router.delete(
+  "/devices/:deviceId",
+  authenticateToken,
+  async (req: any, res: Response) => {
+    try {
+      const { deviceId } = req.params;
+
+      const updatedUser = await User.findByIdAndUpdate(
+        req.userId,
+        { $pull: { devices: { deviceId } } }, // remove from array directly
+        { new: true }
+      );
+
+      if (!updatedUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      res.json({ message: "Device removed successfully" });
+    } catch (error) {
+      console.error("Device removal error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
 
 export default router;

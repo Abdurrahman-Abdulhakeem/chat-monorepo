@@ -81,7 +81,7 @@ const Sidebar = ({
           <DropdownMenuTrigger asChild>
             <Settings className="w-6 h-6 hover:cursor-pointer opacity-97" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-white/5 backdrop-blur border border-white/10 text-white">
+          <DropdownMenuContent align="end" className="bg-white/5 backdrop-blur border border-white/10 text-white">
             <DropdownMenuItem
               onClick={() => {
                 setTimeout(() => {
