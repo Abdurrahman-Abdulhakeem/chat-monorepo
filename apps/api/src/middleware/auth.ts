@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../config/environment.js";
-import { User } from "storage.js";
+import { User } from "../storage.js";
 
 export interface AuthenticatedRequest extends Request {
   user: object | any;
