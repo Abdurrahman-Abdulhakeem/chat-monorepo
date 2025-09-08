@@ -1,8 +1,9 @@
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState, useRef } from "react";
-import { SendHorizontal, XCircle, ImagePlus, Loader2 } from "lucide-react";
+import { SendHorizontal, XCircle, ImagePlus } from "lucide-react";
 import api from "@/lib/api";
+import Loader from "./Loader";
 
 export function ChatInput({
   send,
@@ -20,6 +21,28 @@ export function ChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const MAX_HEIGHT = 150; // px (~6 lines)
+
+  // Auto focus when component mounts
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, [activeConv]); // refocus when switching conversations
+
+  // Blur (lose focus) when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        textareaRef.current &&
+        !textareaRef.current.contains(e.target as Node)
+      ) {
+        textareaRef.current.blur();
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
 
   useEffect(() => {
     if (!socket || !activeConv) return;
@@ -39,6 +62,7 @@ export function ChatInput({
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto"; // reset after send
       setHeight(0);
+      textareaRef.current.focus();
     }
   };
 
@@ -63,6 +87,7 @@ export function ChatInput({
       });
     }
     setPreview(null);
+    textareaRef.current?.focus();
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -93,7 +118,7 @@ export function ChatInput({
       >
         <div
           onClick={open} // manually trigger file picker
-          className="cursor-pointer hover:bg-white/5 transition absolute left-5 top-1/2 -translate-y-1/2 w-10 h-10 justify-center rounded-full flex items-center"
+          className="cursor-pointer hover:bg-white/5 transition absolute left-5 w-10 h-10 justify-center rounded-full flex items-center"
         >
           <input {...getInputProps()} />
           <ImagePlus className="size-5 mt-1" />
@@ -127,7 +152,7 @@ export function ChatInput({
           <div className="relative">
             {imgLoading && (
               <span className="flex items-center justify-center h-full w-full absolute transition bg-black/40">
-                <Loader2 className="animate-spin text-white/80 w-7 h-7" />
+                <Loader size={23} />
               </span>
             )}
             <img src={preview} alt="preview" className="max-w-[120px]" />

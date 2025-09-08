@@ -1,15 +1,16 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { nanoid } from "nanoid";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, User } from "lucide-react";
 import { initSocket } from "@/lib/socket";
-// import Loader from "@/components/Loader";
+import Loader from "@/components/Loader";
 import { useMessages, useSendMessage } from "@/lib/hooks/chat";
 import { Conv, Msg } from "@/lib/types";
 import { Socket } from "socket.io-client";
-// import Image from "next/image";
+import Image from "next/image";
 import { ChatInput } from "@/components/ChatInput";
 import Sidebar from "@/components/Sidebar";
 import ProfilePage from "@/components/pages/ProfilePage";
@@ -34,9 +35,11 @@ export default function ChatPage() {
     []
   );
 
-  const { data: messages, refetch: refetchMessages } = useMessages(
-    activeConv?._id
-  );
+  const {
+    data: messages,
+    refetch: refetchMessages,
+    isLoading: isMsgLoading,
+  } = useMessages(activeConv?._id);
   const sendMessage = useSendMessage(socket);
 
   useEffect(() => {
@@ -171,7 +174,18 @@ export default function ChatPage() {
                     >
                       <ArrowLeft className="w-5 h-5" />
                     </button>
-                    <div className="size-10 rounded-2xl bg-white/10" />
+                    {activeConv?.peer?.avatarUrl ? (
+                      <Image
+                        width={100}
+                        height={100}
+                        className="size-10 rounded-2xl"
+                        src={activeConv.peer.avatarUrl}
+                        alt={activeConv.peer.name!}
+                      />
+                    ) : (
+                      <User className="size-10 rounded-2xl bg-white/10  text-white/60" />
+                    )}
+
                     <div>
                       <div className="font-medium">
                         {activeConv?.peer?.name || "Select a chat"}
@@ -193,6 +207,11 @@ export default function ChatPage() {
                   </div>
                 </div>
 
+                {isMsgLoading && (
+                  <div className="fixed md:left-[160px] z-10 inset-0">
+                    <Loader />
+                  </div>
+                )}
                 {/* Scrollable messages (anchored to bottom) */}
                 <ul
                   {...getRootProps()}
@@ -203,7 +222,6 @@ export default function ChatPage() {
                       <p className="text-white text-lg">Drop image to upload</p>
                     </div>
                   )}
-
                   {messages?.map((m) => (
                     <motion.li
                       key={m.clientId ?? m._id}

@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 import api from "@/lib/api";
-import { setSession, clearSession, me } from "@/lib/auth";
+import { setSession, clearSession } from "@/lib/auth";
 
 export type User = {
   id: string;
@@ -54,28 +54,22 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | undefined>(() => {
-    // Initialize from localStorage safely
-    if (typeof window !== 'undefined') {
-      return me();
-    }
-    return undefined;
-  });
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [user, setUser] = useState<User | undefined>();
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   const handleAuthResponse = (data: any) => {
     // FIX: Handle both response structures properly
-    const tokens = data.token
+    const tokens = data.token;
     const userData = data.user || data;
-    
+
     setSession({
       access: tokens.access,
       refresh: tokens.refresh,
       user: userData,
-      currentDeviceId: data.currentDeviceId
+      currentDeviceId: data.currentDeviceId,
     });
-    
+
     setUser(userData);
     setError(null);
   };
@@ -138,29 +132,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refetchUser = useCallback(async () => {
-    setIsLoading(true);
     try {
       const { data } = await api.get("/auth/profile");
       setUser(data.user);
     } catch (err) {
-      // Only logout if we had a user before
-      console.log(err)
-      if (user) {
-        logout();
-      }
-    } finally {
-      setIsLoading(false);
+      console.error("refetchUser failed:", err);
+      setUser(undefined);
     }
-  }, [user]);
+  }, []);
 
   useEffect(() => {
-    // Only refetch if we have a stored token
-    if (typeof window !== 'undefined') {
+    const refetch = async () => {
       const token = localStorage.getItem("access");
       if (token && !user) {
-        refetchUser();
+        await refetchUser();
       }
-    }
+      setIsLoading(false);
+    };
+
+    refetch();
   }, []);
 
   return (

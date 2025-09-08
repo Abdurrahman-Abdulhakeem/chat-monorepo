@@ -10,6 +10,8 @@ import {
   Loader2,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import Image from "next/image";
+import Loader from "@/components/Loader";
 
 function ProfileSection({
   user,
@@ -31,14 +33,16 @@ function ProfileSection({
             <div className="w-full h-full rounded-full bg-neutral-900 flex items-center justify-center overflow-hidden relative">
               {(isEditing ? editedUser.avatarUrl : user.avatarUrl) ? (
                 <>
-                <img
+                <Image
                   src={isEditing ? editedUser.avatarUrl : user.avatarUrl}
                   alt="Profile"
                   className="w-full h-full object-cover"
+                  width={100}
+                  height={100}
                 />
                 {isUploadAvatarLoading && 
                 <div className="absolute flex items-center justify-center transition bg-black/40 backdrop-blur-xs h-full w-full">
-                <Loader2 className="animate-spin text-white/50 w-7 h-7"/>
+                <Loader size={23} />
                     </div>}
                 </>
               ) : (
