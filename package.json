@@ -11,7 +11,8 @@
     "build:api": "npm --prefix apps/api run build",
     "build:web": "npm --prefix apps/web run build",
     "clean": "rm -rf apps/*/.next",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "install:all": "npm install --prefix apps/web && npm install --prefix apps/api"
   },
   "devDependencies": {
     "concurrently": "^9.2.0"
