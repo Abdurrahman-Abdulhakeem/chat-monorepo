@@ -17,7 +17,7 @@ import {
   User,
   Conversation,
 } from "./storage.js";
-import auth from "./routes/auth.js"; 
+import auth from "./routes/auth.js";
 import uploadRouter from "./routes/upload.js";
 import mongoose from "mongoose";
 import { seed } from "./seed.js";
@@ -25,16 +25,17 @@ import { corsOptions } from "./config/cors.js";
 import { env } from "./config/environment.js";
 
 const app = express();
-app.use(helmet({
+app.use(
+  helmet({
     contentSecurityPolicy: {
       directives: {
-        defaultSrc: ["'self'"], 
+        defaultSrc: ["'self'"],
         imgSrc: ["'self'", "data:", env.BASE_URL], // allow images from backend
       },
     },
     crossOriginResourcePolicy: { policy: "cross-origin" },
-  }));
-
+  })
+);
 
 app.use(cors(corsOptions));
 app.use(express.json({ limit: "5mb" }));
@@ -45,7 +46,6 @@ app.get("/health", (_req, res) => res.json({ ok: true }));
 
 // --- auth routes ---
 app.use("/auth", auth);
-
 
 // --- REST endpoints ---
 app.get("/conversations", async (req, res) => {
@@ -75,6 +75,7 @@ app.get("/conversations", async (req, res) => {
                 name: peer.name,
                 email: peer.email,
                 avatarUrl: peer.avatarUrl,
+                createdAt: peer.createdAt
               }
             : null, // fallback if user not found
           lastMsgAt: c.lastMsgAt,
@@ -88,12 +89,6 @@ app.get("/conversations", async (req, res) => {
   }
 });
 
-
-const EnsureBody = z.object({
-  peerId: z.string().optional(),
-  peerName: z.string().optional(),
-});
-
 app.post("/conv/ensure", async (req, res) => {
   const token = req.headers.authorization?.replace("Bearer ", "");
   if (!token) return res.status(401).json({ error: "Missing token" });
@@ -102,15 +97,59 @@ app.post("/conv/ensure", async (req, res) => {
     const payload = jwt.verify(token, env.JWT_ACCESS_SECRET!) as any;
     const userId = payload.sub;
 
-    const { peerId, peerName } = EnsureBody.parse(req.body);
+    const { peerId, peerName, peerEmail } = req.body;
 
-    const conv = await ensureConversation(
-      userId,
-      peerId ? { id: peerId } : { name: peerName }
-    );
-    return res.json({ convId: conv._id.toString() });
+    // peer lookup
+    let peerQuery = {};
+    if (peerId) {
+      peerQuery = { _id: peerId };
+    } else if (peerEmail) {
+      peerQuery = { email: peerEmail };
+    } else if (peerName) {
+      peerQuery = { name: peerName };
+    } else {
+      return res
+        .status(400)
+        .json({ error: "Must provide peerId, peerEmail, or peerName" });
+    }
+
+    const peerUser = await User.findOne(peerQuery);
+    if (!peerUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Prevent creating conversation with self
+    if (peerUser._id.toString() === userId) {
+      return res
+        .status(400)
+        .json({ error: "Cannot create conversation with yourself" });
+    }
+
+    const conv = await ensureConversation(userId, {
+      id: peerUser._id.toString(),
+    });
+
+    // Return conversation with peer info
+    const convWithPeer = {
+      _id: conv._id.toString(),
+      peer: {
+        _id: peerUser._id.toString(),
+        name: peerUser.name,
+        email: peerUser.email,
+        avatarUrl: peerUser.avatarUrl,
+      },
+      lastMsgAt: conv.lastMsgAt,
+    };
+
+    return res.json({
+      convId: conv._id.toString(),
+      conversation: convWithPeer,
+    });
   } catch (e: any) {
-    return res.status(400).json({ error: e.message });
+    console.error("Conv ensure error:", e);
+    return res
+      .status(500)
+      .json({ error: e.message || "Internal server error" });
   }
 });
 
@@ -139,6 +178,41 @@ app.get("/presence/:userId", async (req, res) => {
     res.json({ online: !!raw });
   } catch {
     res.status(500).json({ error: "Presence error" });
+  }
+});
+
+// User search endpoint
+app.get("/users/search", async (req, res) => {
+  const token = req.headers.authorization?.replace("Bearer ", "");
+  if (!token) return res.status(401).json({ error: "Missing token" });
+
+  try {
+    const payload = jwt.verify(token, env.JWT_ACCESS_SECRET!);
+    const currentUserId = (payload as any).sub;
+    const { q: query } = req.query;
+
+    if (!query || typeof query !== "string" || query.trim().length < 2) {
+      return res
+        .status(400)
+        .json({ error: "Query must be at least 2 characters" });
+    }
+
+    // Search users by name or email, exclude current user
+    const users = await User.find({
+      _id: { $ne: currentUserId },
+      $or: [
+        { name: { $regex: query.trim(), $options: "i" } },
+        { email: { $regex: query.trim(), $options: "i" } },
+      ],
+    })
+      .select("_id name email avatarUrl")
+      .limit(20)
+      .lean();
+
+    res.json({ users });
+  } catch (e) {
+    console.error("Search error:", e);
+    res.status(401).json({ error: "Invalid token" });
   }
 });
 
@@ -234,7 +308,10 @@ io.on("connection", (socket) => {
 
       if (!socket.rooms.has(p.convId)) {
         const conv = await Conversation.findById(p.convId).lean();
-        if (!conv || !conv.participants.map((p: any) => p.toString()).includes(userId))
+        if (
+          !conv ||
+          !conv.participants.map((p: any) => p.toString()).includes(userId)
+        )
           return ack?.({ error: "unauthorized" });
         socket.join(p.convId);
       }
@@ -328,9 +405,6 @@ io.on("connection", (socket) => {
 });
 
 await connectMongo(env.MONGO_URL!, env.MONGO_DB!);
-// await seed()
-// await Conversation.deleteMany({})
-// await Message.deleteMany({})
 server.listen(env.PORT || 4000, () =>
   console.log(`api listening on ${env.PORT || 4000}`)
 );

@@ -59,7 +59,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   const handleAuthResponse = (data: any) => {
-    // FIX: Handle both response structures properly
     const tokens = data.token;
     const userData = data.user || data;
 

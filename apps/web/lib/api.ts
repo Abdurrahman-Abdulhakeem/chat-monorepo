@@ -33,7 +33,7 @@ api.interceptors.response.use(
             localStorage.setItem("access", data.access);
             return data.access as string;
           } catch {
-            ["access", "refresh", "userId", "me"].forEach((k) =>
+            ["access", "refresh", "userId", "currentDeviceId", "me"].forEach((k) =>
               localStorage.removeItem(k)
             );
             return null;

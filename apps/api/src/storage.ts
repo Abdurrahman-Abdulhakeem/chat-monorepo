@@ -204,7 +204,7 @@ const ConversationSchema = new Schema(
 );
 
 // FIX: Create a compound index properly for sorted participants
-ConversationSchema.index({ participants: 1 }, { unique: true });
+ConversationSchema.index({ participants: 1 });
 
 // Add a pre-save hook to ensure participants are always sorted
 ConversationSchema.pre('save', function(next) {

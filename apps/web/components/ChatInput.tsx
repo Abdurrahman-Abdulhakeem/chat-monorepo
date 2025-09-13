@@ -24,7 +24,9 @@ export function ChatInput({
 
   // Auto focus when component mounts
   useEffect(() => {
-    textareaRef.current?.focus();
+    if (window.innerWidth >= 768) {
+      textareaRef.current?.focus();
+    }
   }, [activeConv]); // refocus when switching conversations
 
   // Blur (lose focus) when clicking outside
@@ -62,7 +64,9 @@ export function ChatInput({
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto"; // reset after send
       setHeight(0);
-      textareaRef.current.focus();
+      if (window.innerWidth >= 768) {
+        textareaRef.current.focus();
+      }
     }
   };
 
@@ -87,7 +91,9 @@ export function ChatInput({
       });
     }
     setPreview(null);
-    textareaRef.current?.focus();
+    if (window.innerWidth >= 768) {
+      textareaRef.current?.focus();
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {

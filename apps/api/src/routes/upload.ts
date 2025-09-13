@@ -8,14 +8,12 @@ import streamifier from "streamifier";
 
 const router = express.Router();
 
-// configure cloudinary once
 cloudinary.config({
   cloud_name: env.CLOUDINARY_CLOUD_NAME,
   api_key: env.CLOUDINARY_API_KEY,
   api_secret: env.CLOUDINARY_API_SECRET,
 });
 
-// memory storage (so we don't save to disk)
 const upload = multer({ storage: multer.memoryStorage() });
 
 router.post("/", upload.single("file"), async (req, res) => {
