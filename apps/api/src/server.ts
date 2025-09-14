@@ -338,7 +338,7 @@ io.on("connection", (socket) => {
         url: z.string(),
         mime: z.string(),
         size: z.number(),
-        duration: z.number().optional(),
+        duration: z.number().optional().nullable(),
         filename: z.string().optional()
       }).optional(),
     });
@@ -413,7 +413,6 @@ io.on("connection", (socket) => {
 });
 
 await connectMongo(env.MONGO_URL!, env.MONGO_DB!);
-//  await Message.deleteMany({})
 server.listen(env.PORT || 4000, () =>
   console.log(`api listening on ${env.PORT || 4000}`)
 );

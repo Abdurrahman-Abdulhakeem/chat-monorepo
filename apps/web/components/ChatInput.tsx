@@ -86,10 +86,14 @@ export function ChatInput({
   // Create audio URL when audioBlob changes
   useEffect(() => {
     if (audioBlob) {
-      const url = URL.createObjectURL(audioBlob);
-      setAudioUrl(url);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAudioUrl(reader.result as string); // Base64 string
+      };
+      reader.readAsDataURL(audioBlob);
+
       return () => {
-        URL.revokeObjectURL(url);
+        setAudioUrl(null);
       };
     } else {
       setAudioUrl(null);
@@ -109,7 +113,11 @@ export function ChatInput({
       source.connect(analyserRef.current);
       analyserRef.current.fftSize = 256;
 
-      mediaRecorderRef.current = new MediaRecorder(stream);
+      const mimeType = MediaRecorder.isTypeSupported("audio/mp4;codecs=aac")
+        ? "audio/mp4"
+        : "audio/webm";
+
+      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType });
       const chunks: Blob[] = [];
 
       mediaRecorderRef.current.ondataavailable = (e) => {
@@ -193,8 +201,12 @@ export function ChatInput({
           });
         }
 
-        await audioRef.current.play();
-        setIsPlaying(true);
+        try {
+          await audioRef.current.play();
+          setIsPlaying(true);
+        } catch (err) {
+          console.error("iOS playback failed:", err);
+        }
 
         // Start playback timer
         playbackTimerRef.current = setInterval(() => {
@@ -279,7 +291,7 @@ export function ChatInput({
             url: data.url,
             mime: audioBlob.type,
             size: audioBlob.size,
-            duration: duration,
+            duration: duration || 0,
           },
         });
       }
@@ -347,7 +359,7 @@ export function ChatInput({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && window.innerWidth >= 768) {
       e.preventDefault();
       handleSendText();
     }
@@ -424,6 +436,8 @@ export function ChatInput({
           <audio
             ref={audioRef}
             src={audioUrl}
+            playsInline
+            controls={false}
             onLoadedMetadata={handleLoadedMetadata}
             onEnded={handleAudioEnd}
             onError={handleAudioError}

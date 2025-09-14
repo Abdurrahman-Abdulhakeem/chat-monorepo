@@ -33,7 +33,7 @@ export const VoiceMessage = ({ message, isOwn }: any) => {
   // Handle audio events
   const handleLoadedMetadata = () => {
     if (audioRef.current) {
-      setDuration(message.media?.duration || audioRef.current.duration || 0);
+      setDuration(message.media?.duration ?? audioRef.current.duration ?? 0);
       setIsLoaded(true);
     }
   };
