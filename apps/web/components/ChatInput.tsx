@@ -83,22 +83,23 @@ export function ChatInput({
     });
   }, [value, socket, activeConv]);
 
-  // Create audio URL when audioBlob changes
-  useEffect(() => {
-    if (audioBlob) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAudioUrl(reader.result as string); // Base64 string
-      };
-      reader.readAsDataURL(audioBlob);
+// Create audio URL when audioBlob changes
+useEffect(() => {
+  if (audioBlob) {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAudioUrl(reader.result as string); // Base64 string
+    };
+    reader.readAsDataURL(audioBlob);
 
-      return () => {
-        setAudioUrl(null);
-      };
-    } else {
-      setAudioUrl(null);
-    }
-  }, [audioBlob]);
+    return () => {
+      setAudioUrl(null); 
+    };
+  } else {
+    setAudioUrl(null);
+  }
+}, [audioBlob]);
+
 
   // Voice note functions
   const startRecording = async () => {
@@ -114,8 +115,8 @@ export function ChatInput({
       analyserRef.current.fftSize = 256;
 
       const mimeType = MediaRecorder.isTypeSupported("audio/mp4;codecs=aac")
-        ? "audio/mp4"
-        : "audio/webm";
+  ? "audio/mp4"
+  : "audio/webm";
 
       mediaRecorderRef.current = new MediaRecorder(stream, { mimeType });
       const chunks: Blob[] = [];
@@ -201,12 +202,8 @@ export function ChatInput({
           });
         }
 
-        try {
-          await audioRef.current.play();
-          setIsPlaying(true);
-        } catch (err) {
-          console.error("iOS playback failed:", err);
-        }
+        await audioRef.current.play();
+        setIsPlaying(true);
 
         // Start playback timer
         playbackTimerRef.current = setInterval(() => {
