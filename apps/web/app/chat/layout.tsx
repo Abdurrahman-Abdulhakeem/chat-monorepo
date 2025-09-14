@@ -1,24 +1,19 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { ReactNode, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthProvider";
 import Loader from "@/components/Loader";
 
 const ChatLayout = ({ children }: { children: ReactNode }) => {
-  const { user, isLoading } = useAuth();
-  const router = useRouter();
-  const [redirecting, setRedirecting] = useState(false);
+  const { user, isLoading, logout } = useAuth();
 
   useEffect(() => {
     if (!isLoading && !user) {
-      setRedirecting(true);
-      router.replace("/login");
+      logout();
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading, logout]);
 
-  // Show loader while fetching user OR redirecting
-  if (isLoading || redirecting) {
+  if (isLoading) {
     return <Loader />;
   }
 

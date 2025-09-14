@@ -4,6 +4,8 @@
 import { ArrowLeft, Calendar, User } from "lucide-react";
 import { motion } from "framer-motion";
 import Image from "next/image";
+import { useState } from "react";
+import { PreviewImage } from "../ui/PreviewImage";
 
 export default function PeerProfilePage({
   peer,
@@ -12,7 +14,7 @@ export default function PeerProfilePage({
   peer: any;
   onBack: () => void;
 }) {
-  console.log(peer);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   return (
     <div className="h-screen overflow-auto bg-neutral-950 text-white">
       {/* Header */}
@@ -45,6 +47,7 @@ export default function PeerProfilePage({
                   className="w-full h-full object-cover"
                   width={128}
                   height={128}
+                  onClick={() => setSelectedImage(peer.avatarUrl)}
                 />
               ) : (
                 <User className="w-16 h-16 text-white/60" />
@@ -53,19 +56,8 @@ export default function PeerProfilePage({
           </div>
 
           <div className="flex items-center space-x-2">
-            <div
-              className={`w-3 h-3 rounded-full ${
-                peer.status === "online"
-                  ? "bg-green-500 animate-pulse"
-                  : peer.status === "offline"
-                  ? "bg-yellow-500"
-                  : peer.status === "busy"
-                  ? "bg-red-500"
-                  : "bg-gray-500"
-              }`}
-            ></div>
             <span className="text-sm text-white/60 capitalize">
-              {peer.status || "offline"}
+              {peer.name.split(" ")[0]}
             </span>
           </div>
         </div>
@@ -105,6 +97,11 @@ export default function PeerProfilePage({
             </div>
           </div>
         </div>
+
+        <PreviewImage
+          selectedImage={selectedImage}
+          setSelectedImage={setSelectedImage}
+        />
       </motion.div>
     </div>
   );

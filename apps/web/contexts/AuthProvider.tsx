@@ -11,6 +11,7 @@ import {
 } from "react";
 import api from "@/lib/api";
 import { setSession, clearSession } from "@/lib/auth";
+import { useRouter } from "next/navigation";
 
 export type User = {
   id: string;
@@ -57,6 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | undefined>();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   const handleAuthResponse = (data: any) => {
     const tokens = data.token;
@@ -125,9 +127,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
+    setIsLoading(false)
     clearSession();
     setUser(undefined);
     setError(null);
+    router.replace("/login")
   };
 
   const refetchUser = useCallback(async () => {
@@ -136,7 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(data.user);
     } catch (err) {
       console.error("refetchUser failed:", err);
-      setUser(undefined);
+      logout()
     }
   }, []);
 

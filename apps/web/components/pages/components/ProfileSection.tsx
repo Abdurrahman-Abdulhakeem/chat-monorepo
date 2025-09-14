@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
 import {
   Camera,
   User,
@@ -12,6 +13,8 @@ import {
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Loader from "@/components/Loader";
+import { useState } from "react";
+import { PreviewImage } from "@/components/ui/PreviewImage";
 
 function ProfileSection({
   user,
@@ -24,6 +27,7 @@ function ProfileSection({
   isDetectingLocation,
   isUploadAvatarLoading,
 }: any) {
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   return (
     <div className="space-y-6">
       {/* Avatar Section */}
@@ -33,17 +37,23 @@ function ProfileSection({
             <div className="w-full h-full rounded-full bg-neutral-900 flex items-center justify-center overflow-hidden relative">
               {(isEditing ? editedUser.avatarUrl : user.avatarUrl) ? (
                 <>
-                <Image
-                  src={isEditing ? editedUser.avatarUrl : user.avatarUrl}
-                  alt="Profile"
-                  className="w-full h-full object-cover"
-                  width={100}
-                  height={100}
-                />
-                {isUploadAvatarLoading && 
-                <div className="absolute flex items-center justify-center transition bg-black/40 backdrop-blur-xs h-full w-full">
-                <Loader size={23} />
-                    </div>}
+                  <Image
+                    src={isEditing ? editedUser.avatarUrl : user.avatarUrl}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                    width={100}
+                    height={100}
+                    onClick={() =>
+                      setSelectedImage(
+                        isEditing ? editedUser.avatarUrl : user.avatarUrl
+                      )
+                    }
+                  />
+                  {isUploadAvatarLoading && (
+                    <div className="absolute flex items-center justify-center transition bg-black/40 backdrop-blur-xs h-full w-full">
+                      <Loader size={23} />
+                    </div>
+                  )}
                 </>
               ) : (
                 <User className="w-16 h-16 text-white/60" />
@@ -216,6 +226,11 @@ function ProfileSection({
           </div>
         </div>
       </div>
+
+      <PreviewImage
+        selectedImage={selectedImage}
+        setSelectedImage={setSelectedImage}
+      />
     </div>
   );
 }

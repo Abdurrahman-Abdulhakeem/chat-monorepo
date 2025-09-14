@@ -18,6 +18,7 @@ import ProfilePage from "@/components/pages/ProfilePage";
 import { useAuth } from "@/contexts/AuthProvider";
 import { useDropzone } from "react-dropzone";
 import PeerProfilePage from "@/components/pages/PeerProfilePage";
+import { PreviewImage } from "@/components/ui/PreviewImage";
 
 export default function ChatPage() {
   const [activeConv, setActiveConv] = useState<Conv | null>(null);
@@ -147,7 +148,18 @@ export default function ChatPage() {
         <main className={`relative h-[100dvh] min-h-0`}>
           <AnimatePresence mode="wait">
             {activeView === "peer-profile" && selectedPeer ? (
-              <PeerProfilePage peer={selectedPeer} onBack={handleCloseAll} />
+              <motion.div
+                key="peer-profile"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className={`h-full ${
+                  showProfile ? "flex" : "hidden"
+                } md:flex flex-col`}
+              >
+                <PeerProfilePage peer={selectedPeer} onBack={handleCloseAll} />
+              </motion.div>
             ) : activeView === "profile" ? (
               <motion.div
                 key="profile"
@@ -193,8 +205,10 @@ export default function ChatPage() {
                     <div className="sticky top-0 z-20 border-b border-white/10 bg-neutral-950/80 supports-[backdrop-filter:blur(2px)]:backdrop-blur backdrop-fallback transform-gpu">
                       <div
                         className="flex items-center gap-3 p-4 cursor-pointer"
-                        onClick={() => {setActiveView("peer-profile")
-                          setSelectedPeer(activeConv.peer)
+                        onClick={() => {
+                          setShowProfile(true);
+                          setActiveView("peer-profile");
+                          setSelectedPeer(activeConv.peer);
                         }}
                       >
                         <button
@@ -306,35 +320,10 @@ export default function ChatPage() {
                   </>
                 )}
 
-                <AnimatePresence>
-                  {selectedImage && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="fixed inset-0 z-[999] bg-black/80 flex items-center justify-center p-4"
-                      onClick={() => setSelectedImage(null)}
-                    >
-                      <button
-                        onClick={() => setSelectedImage(null)}
-                        className="absolute top-4 right-4 text-white/80 hover:text-white transition"
-                      >
-                        ✕
-                      </button>
-                      <motion.img
-                        key={selectedImage}
-                        src={selectedImage}
-                        alt="preview"
-                        initial={{ scale: 0.9, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0.9, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="max-h-[90vh] max-w-[90vw] rounded-lg shadow-lg cursor-pointer"
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <PreviewImage
+                  selectedImage={selectedImage}
+                  setSelectedImage={setSelectedImage}
+                />
               </motion.div>
             )}
           </AnimatePresence>
