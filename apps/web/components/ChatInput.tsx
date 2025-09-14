@@ -83,23 +83,18 @@ export function ChatInput({
     });
   }, [value, socket, activeConv]);
 
-// Create audio URL when audioBlob changes
-useEffect(() => {
-  if (audioBlob) {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setAudioUrl(reader.result as string); // Base64 string
-    };
-    reader.readAsDataURL(audioBlob);
-
-    return () => {
-      setAudioUrl(null); 
-    };
-  } else {
-    setAudioUrl(null);
-  }
-}, [audioBlob]);
-
+  // Create audio URL when audioBlob changes
+  useEffect(() => {
+    if (audioBlob) {
+      const url = URL.createObjectURL(audioBlob);
+      setAudioUrl(url);
+      return () => {
+        URL.revokeObjectURL(url);
+      };
+    } else {
+      setAudioUrl(null);
+    }
+  }, [audioBlob]);
 
   // Voice note functions
   const startRecording = async () => {
@@ -115,8 +110,8 @@ useEffect(() => {
       analyserRef.current.fftSize = 256;
 
       const mimeType = MediaRecorder.isTypeSupported("audio/mp4;codecs=aac")
-  ? "audio/mp4"
-  : "audio/webm";
+        ? "audio/mp4"
+        : "audio/webm";
 
       mediaRecorderRef.current = new MediaRecorder(stream, { mimeType });
       const chunks: Blob[] = [];
@@ -433,8 +428,6 @@ useEffect(() => {
           <audio
             ref={audioRef}
             src={audioUrl}
-            playsInline
-            controls={false}
             onLoadedMetadata={handleLoadedMetadata}
             onEnded={handleAudioEnd}
             onError={handleAudioError}
