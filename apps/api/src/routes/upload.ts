@@ -32,6 +32,10 @@ const upload = multer({
       "audio/ogg",
       "audio/m4a",
       "audio/mpeg",
+      "audio/mp4",
+      "audio/aac",
+      "audio/x-m4a",
+      "audio/quicktime",
     ];
 
     if (allowedMimes.includes(file.mimetype)) {
@@ -57,11 +61,8 @@ router.post("/", upload.single("file"), async (req, res) => {
       resource_type: isAudio ? "video" : "image",
     };
 
-    // For audio files, you might want to add additional options
     if (isAudio) {
-      uploadOptions.format = "mp3";
-      uploadOptions.audio_codec = "mp3";
-      uploadOptions.bit_rate = "64k";
+      uploadOptions.resource_type = "video";
     }
 
     // Stream buffer to Cloudinary
