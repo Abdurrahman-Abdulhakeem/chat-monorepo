@@ -14,7 +14,33 @@ cloudinary.config({
   api_secret: env.CLOUDINARY_API_SECRET,
 });
 
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept images and audio files
+    const allowedMimes = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "audio/webm",
+      "audio/mp3",
+      "audio/wav",
+      "audio/ogg",
+      "audio/m4a",
+      "audio/mpeg",
+    ];
+
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      throw new Error(`File type ${file.mimetype} not supported`);
+    }
+  },
+});
 
 router.post("/", upload.single("file"), async (req, res) => {
   try {
@@ -22,21 +48,60 @@ router.post("/", upload.single("file"), async (req, res) => {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
-    // stream buffer - cloudinary
+    // Determine resource type and folder based on file type
+    const isAudio = req.file.mimetype.startsWith("audio/");
+    const isImage = req.file.mimetype.startsWith("image/");
+
+    const uploadOptions: any = {
+      folder: isAudio ? "chat_app/voice_notes" : "chat_app/images",
+      resource_type: isAudio ? "video" : "image",
+    };
+
+    // For audio files, you might want to add additional options
+    if (isAudio) {
+      uploadOptions.format = "mp3";
+      uploadOptions.audio_codec = "mp3";
+      uploadOptions.bit_rate = "64k";
+    }
+
+    // Stream buffer to Cloudinary
     const stream = cloudinary.uploader.upload_stream(
-      { folder: "chat_app" }, // optional folder
+      uploadOptions,
       (error, result) => {
         if (error) {
           console.error("Cloudinary error:", error);
           return res.status(500).json({ error: "Upload failed" });
         }
-        return res.json({ url: result?.secure_url });
+
+        // Return additional metadata for voice notes
+        const response: any = {
+          url: result?.secure_url,
+          publicId: result?.public_id,
+          format: result?.format,
+          resourceType: result?.resource_type,
+        };
+
+        // For audio files, include duration if available
+        if (isAudio && result?.duration) {
+          response.duration = result.duration;
+        }
+
+        // For images, include dimensions
+        if (isImage) {
+          response.width = result?.width;
+          response.height = result?.height;
+        }
+
+        return res.json(response);
       }
     );
 
     streamifier.createReadStream(req.file.buffer).pipe(stream);
-  } catch (err) {
-    console.error(err);
+  } catch (err: any) {
+    console.error("Upload error:", err);
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({ error: "File too large" });
+    }
     res.status(500).json({ error: "Upload failed" });
   }
 });
@@ -64,7 +129,9 @@ router.post(
           }
 
           // update user profile
-          await User.findByIdAndUpdate(userId, { avatarUrl: result?.secure_url });
+          await User.findByIdAndUpdate(userId, {
+            avatarUrl: result?.secure_url,
+          });
 
           res.json({ url: result?.secure_url });
         }

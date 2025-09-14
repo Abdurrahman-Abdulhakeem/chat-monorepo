@@ -19,6 +19,7 @@ import { useAuth } from "@/contexts/AuthProvider";
 import { useDropzone } from "react-dropzone";
 import PeerProfilePage from "@/components/pages/PeerProfilePage";
 import { PreviewImage } from "@/components/ui/PreviewImage";
+import { VoiceMessage } from "@/components/VoiceMessage";
 
 export default function ChatPage() {
   const [activeConv, setActiveConv] = useState<Conv | null>(null);
@@ -276,14 +277,16 @@ export default function ChatPage() {
                             m.from === meId ? "justify-end" : "justify-start"
                           }`}
                         >
-                          {m.kind === "image" && m.media?.url ? (
+                          {m.kind === "voice" && m.media?.url ? (
+                            <VoiceMessage message={m} isOwn={m.from === meId} />
+                          ) : m.kind === "image" && m.media?.url ? (
                             <button
                               onClick={() => setSelectedImage(m.media!.url)}
                               className="focus:outline-none"
                             >
-                              <img
-                                width={100}
-                                height={100}
+                              <Image
+                                width={1000}
+                                height={1000}
                                 src={m.media?.url}
                                 alt="shared"
                                 className="max-w-[300px] w-[150px] md:w-[300px] rounded-2xl object-cover shadow"
@@ -293,8 +296,8 @@ export default function ChatPage() {
                             <div
                               className={`inline-block max-w-[75%] px-3 py-2 rounded-2xl break-words whitespace-pre-wrap ${
                                 m.from === meId
-                                  ? "bg-white/85 text-black rounded-br-sm"
-                                  : "bg-white/10 supports-[backdrop-filter:blur(2px)]:backdrop-blur rounded-bl-sm"
+                                  ? "bg-blue-700/20 text-white/80 rounded-br-sm"
+                                  : "bg-white/10 text-white/80 supports-[backdrop-filter:blur(2px)]:backdrop-blur rounded-bl-sm"
                               }`}
                             >
                               {m.text}

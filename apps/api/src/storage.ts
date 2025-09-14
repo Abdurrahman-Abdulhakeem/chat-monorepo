@@ -164,7 +164,6 @@ const UserSchema = new Schema<IUserDocument>(
 );
 
 // Indexes
-UserSchema.index({ email: 1 });
 UserSchema.index({ "devices.deviceId": 1 });
 UserSchema.index({ lastActiveAt: -1 });
 
@@ -244,6 +243,7 @@ const MessageSchema = new Schema(
       w: Number,
       h: Number,
       size: Number,
+      duration: Number,
     },
     clientId: { type: String, unique: true, sparse: true }, // Add sparse index
     sentAt: { type: Date, index: true, default: Date.now },

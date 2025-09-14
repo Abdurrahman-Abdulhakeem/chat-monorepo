@@ -2,6 +2,7 @@
 
 import { LogOut, MessageSquarePlus, Settings, User } from "lucide-react";
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -166,9 +167,11 @@ const Sidebar = ({
             >
               <div className="flex items-center gap-3">
                 {c.peer?.avatarUrl ? (
-                  <img
+                  <Image
+                    width={100}
+                    height={100}
                     src={c.peer.avatarUrl}
-                    alt={c.peer.name}
+                    alt={c.peer.name ?? "User Avatar"}
                     className="w-12 h-12 rounded-full object-cover"
                   />
                 ) : (

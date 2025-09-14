@@ -334,8 +334,15 @@ io.on("connection", (socket) => {
       clientId: z.string().min(8),
       kind: z.enum(["text", "image", "file", "voice"]),
       text: z.string().max(4096).optional(),
-      media: z.any().optional(),
+      media: z.object({
+        url: z.string(),
+        mime: z.string(),
+        size: z.number(),
+        duration: z.number().optional(),
+        filename: z.string().optional()
+      }).optional(),
     });
+
     try {
       const m = MsgSchema.parse(payload);
       const conv = await Conversation.findById(m.convId).lean();
@@ -370,6 +377,7 @@ io.on("connection", (socket) => {
         kind: m.kind,
         text: m.text,
         sentAt: doc.sentAt,
+        media: m.media,
       });
     } catch (e: any) {
       ack?.({ error: e.message });
@@ -405,6 +413,7 @@ io.on("connection", (socket) => {
 });
 
 await connectMongo(env.MONGO_URL!, env.MONGO_DB!);
+//  await Message.deleteMany({})
 server.listen(env.PORT || 4000, () =>
   console.log(`api listening on ${env.PORT || 4000}`)
 );

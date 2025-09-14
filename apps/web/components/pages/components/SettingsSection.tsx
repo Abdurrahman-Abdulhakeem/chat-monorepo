@@ -30,7 +30,7 @@ function SettingsSection() {
             <button
               onClick={() => toggleSetting("notifications")}
               className={`w-12 h-6 rounded-full relative transition-colors ${
-                settings.notifications ? "bg-blue-500" : "bg-white/20"
+                settings.notifications ? "bg-blue-700/60" : "bg-white/20"
               }`}
             >
               <div
@@ -52,7 +52,7 @@ function SettingsSection() {
             <button
               onClick={() => toggleSetting("darkMode")}
               className={`w-12 h-6 rounded-full relative transition-colors ${
-                settings.darkMode ? "bg-blue-500" : "bg-white/20"
+                settings.darkMode ? "bg-blue-700/60" : "bg-white/20"
               }`}
             >
               <div
@@ -91,7 +91,7 @@ function SettingsSection() {
             <button
               onClick={() => toggleSetting("twoFactor")}
               className={`w-12 h-6 rounded-full relative transition-colors ${
-                settings.twoFactor ? "bg-blue-500" : "bg-white/20"
+                settings.twoFactor ? "bg-blue-700/60" : "bg-white/20"
               }`}
             >
               <div

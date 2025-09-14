@@ -9,6 +9,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import { useUserSearch, SearchUser } from "@/lib/hooks/useUserSearch";
 
 interface NewChatModalProps {
@@ -183,7 +184,9 @@ export function NewChatModal({
                     className="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-all duration-200 group"
                   >
                     {user.avatarUrl ? (
-                      <img
+                      <Image
+                        width={100}
+                        height={100}
                         src={user.avatarUrl}
                         alt={user.name}
                         className="w-12 h-12 rounded-full object-cover ring-2 ring-transparent group-hover:ring-white/20 transition-all"

@@ -7,6 +7,8 @@ A modern, scalable **real-time chat application** built with a monorepo architec
 ## ✨ Features
 
 - **Real-time Messaging** - Instant message delivery using Socket.io connections
+- **Voice Notes** - Record, send, and play back voice messages seamlessly
+- **Voice-to-Text Transcription** - Automatic conversion of voice notes into text for accessibility and quick reading
 - **User Authentication** - Secure JWT-based login and registration system  
 - **Profile Management** - Complete profile settings with location detection
 - **Responsive Design** - Mobile-first approach with seamless desktop experience
@@ -171,6 +173,7 @@ Ensure you have the following installed on your system:
 
 | Command | Description |
 |---------|-------------|
+| `npm run install:all` | Install all dependencies |
 | `npm run dev` | Start all development servers |
 | `npm run dev:web` | Start Next.js web application only |
 | `npm run dev:api` | Start Express API server only |

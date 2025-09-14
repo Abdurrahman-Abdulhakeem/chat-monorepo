@@ -65,7 +65,7 @@ function ProfileSection({
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               onClick={() => fileInputRef.current?.click()}
-              className="absolute bottom-2 right-2 w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors"
+              className="absolute bottom-2 right-2 w-10 h-10 bg-blue-700/70 rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors"
             >
               <Camera className="w-5 h-5 text-white" />
             </motion.button>
