@@ -38,6 +38,7 @@ export function ChatInput({
   const [amplitude, setAmplitude] = useState(0);
   const [voiceLoading, setVoiceLoading] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioReady, setAudioReady] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -51,6 +52,9 @@ export function ChatInput({
   const animationFrameRef = useRef<number | null>(null);
 
   const MAX_HEIGHT = 150; // px (~6 lines)
+
+  // Detect iOS
+  const isIOS = typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
 
   // Auto focus when component mounts
   useEffect(() => {
@@ -88,32 +92,42 @@ export function ChatInput({
     if (audioBlob) {
       const url = URL.createObjectURL(audioBlob);
       setAudioUrl(url);
+      setAudioReady(false);
       return () => {
         URL.revokeObjectURL(url);
       };
     } else {
       setAudioUrl(null);
+      setAudioReady(false);
     }
   }, [audioBlob]);
 
   // Voice note functions
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        }
+      });
 
-      // Set up audio context for visualization
-      audioContextRef.current = new (window.AudioContext ||
-        (window as any).webkitAudioContext)();
-      analyserRef.current = audioContextRef.current.createAnalyser();
-      const source = audioContextRef.current.createMediaStreamSource(stream);
-      source.connect(analyserRef.current);
-      analyserRef.current.fftSize = 256;
+      // Set up audio context for visualization (skip on iOS for better compatibility)
+      if (!isIOS) {
+        audioContextRef.current = new (window.AudioContext ||
+          (window as any).webkitAudioContext)();
+        analyserRef.current = audioContextRef.current.createAnalyser();
+        const source = audioContextRef.current.createMediaStreamSource(stream);
+        source.connect(analyserRef.current);
+        analyserRef.current.fftSize = 256;
+      }
 
-      const mimeType = MediaRecorder.isTypeSupported("audio/mp4;codecs=aac")
-        ? "audio/mp4"
-        : "audio/webm";
+      // Use more compatible options for iOS
+      const mimeType = isIOS ? 'audio/mp4' : 'audio/webm';
+      const options = isIOS ? { mimeType } : { mimeType: 'audio/webm;codecs=opus' };
 
-      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = new MediaRecorder(stream, options);
       const chunks: Blob[] = [];
 
       mediaRecorderRef.current.ondataavailable = (e) => {
@@ -121,7 +135,7 @@ export function ChatInput({
       };
 
       mediaRecorderRef.current.onstop = () => {
-        const blob = new Blob(chunks, { type: "audio/webm" });
+        const blob = new Blob(chunks, { type: mimeType });
         setAudioBlob(blob);
         stream.getTracks().forEach((track) => track.stop());
       };
@@ -135,8 +149,10 @@ export function ChatInput({
         setRecordingTime((prev) => prev + 1);
       }, 1000);
 
-      // Start amplitude visualization
-      updateAmplitude();
+      // Start amplitude visualization (only if not iOS)
+      if (!isIOS) {
+        updateAmplitude();
+      }
     } catch (error) {
       console.error("Error starting recording:", error);
     }
@@ -185,19 +201,45 @@ export function ChatInput({
           playbackTimerRef.current = null;
         }
       } else {
-        // Ensure audio is loaded
-        if (audioRef.current.readyState < 2) {
-          await new Promise((resolve) => {
+        // For iOS, we need to ensure the audio element is properly initialized
+        if (!audioReady) {
+          // Force load the audio
+          audioRef.current.load();
+          
+          // Wait for the audio to be ready
+          await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              reject(new Error('Audio load timeout'));
+            }, 5000);
+
             const handleCanPlay = () => {
-              audioRef.current?.removeEventListener("canplay", handleCanPlay);
+              clearTimeout(timeout);
+              audioRef.current?.removeEventListener("canplaythrough", handleCanPlay);
+              audioRef.current?.removeEventListener("error", handleError);
+              setAudioReady(true);
               resolve(void 0);
             };
-            audioRef.current?.addEventListener("canplay", handleCanPlay);
-            audioRef.current?.load();
+
+            const handleError = (e: any) => {
+              clearTimeout(timeout);
+              audioRef.current?.removeEventListener("canplaythrough", handleCanPlay);
+              audioRef.current?.removeEventListener("error", handleError);
+              console.error("Audio load error:", e);
+              reject(e);
+            };
+
+            audioRef.current?.addEventListener("canplaythrough", handleCanPlay);
+            audioRef.current?.addEventListener("error", handleError);
           });
         }
 
-        await audioRef.current.play();
+        // iOS requires user interaction to play audio
+        const playPromise = audioRef.current.play();
+        
+        if (playPromise !== undefined) {
+          await playPromise;
+        }
+        
         setIsPlaying(true);
 
         // Start playback timer
@@ -208,12 +250,18 @@ export function ChatInput({
           }
         }, 100);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error in togglePlayback:", error);
       setIsPlaying(false);
+      setAudioReady(false);
       if (playbackTimerRef.current) {
         clearInterval(playbackTimerRef.current);
         playbackTimerRef.current = null;
+      }
+      
+      // On iOS, if autoplay fails, we might need to show a user message
+      if (isIOS && error.name === 'NotAllowedError') {
+        console.log("iOS requires user interaction to play audio");
       }
     }
   };
@@ -221,8 +269,15 @@ export function ChatInput({
   const handleLoadedMetadata = () => {
     if (audioRef.current) {
       const audioDuration = audioRef.current.duration;
-      setDuration(audioDuration);
+      if (audioDuration && !isNaN(audioDuration) && audioDuration !== Infinity) {
+        setDuration(audioDuration);
+        setAudioReady(true);
+      }
     }
+  };
+
+  const handleCanPlayThrough = () => {
+    setAudioReady(true);
   };
 
   const handleAudioEnd = () => {
@@ -240,6 +295,7 @@ export function ChatInput({
   const handleAudioError = (e: any) => {
     console.error("Audio error:", e);
     setIsPlaying(false);
+    setAudioReady(false);
     if (playbackTimerRef.current) {
       clearInterval(playbackTimerRef.current);
       playbackTimerRef.current = null;
@@ -264,6 +320,7 @@ export function ChatInput({
     setRecordingTime(0);
     setPlaybackTime(0);
     setDuration(0);
+    setAudioReady(false);
   };
 
   const sendVoiceNote = async () => {
@@ -271,7 +328,7 @@ export function ChatInput({
 
     setVoiceLoading(true);
     const formData = new FormData();
-    formData.append("file", audioBlob, "voice-note.webm");
+    formData.append("file", audioBlob, isIOS ? "voice-note.m4a" : "voice-note.webm");
 
     try {
       const { data } = await api.post("/upload", formData);
@@ -397,13 +454,13 @@ export function ChatInput({
             {Array.from({ length: 15 }).map((_, i) => (
               <div
                 key={i}
-                className="w-0.5 bg-green-700/80 rounded-full transition-all duration-75 ...."
+                className="w-0.5 bg-green-700/80 rounded-full transition-all duration-75"
                 style={{
                   height: `${Math.max(
                     4,
-                    amplitude * 30 + Math.random() * 10
+                    (isIOS ? 0.5 : amplitude) * 30 + (isIOS ? Math.random() * 5 : Math.random() * 10)
                   )}px`,
-                  opacity: 0.6 + amplitude * 0.4,
+                  opacity: 0.6 + (isIOS ? 0.2 : amplitude * 0.4),
                 }}
               />
             ))}
@@ -429,15 +486,18 @@ export function ChatInput({
             ref={audioRef}
             src={audioUrl}
             onLoadedMetadata={handleLoadedMetadata}
+            onCanPlayThrough={handleCanPlayThrough}
             onEnded={handleAudioEnd}
             onError={handleAudioError}
             preload="metadata"
+            playsInline
+            controls={false}
           />
 
           <button
             onClick={togglePlayback}
             className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition"
-            disabled={!audioUrl}
+            disabled={!audioUrl || !audioReady}
           >
             {isPlaying ? (
               <Pause className="w-4 h-4 text-white/70" />
